@@ -1,0 +1,25 @@
+require('dotenv').config();
+
+module.exports = {
+    general: {
+        token: process.env.GENERAL_TOKEN,
+        guildId: process.env.GENERAL_GUILD_ID,
+        verifyChannel: process.env.GENERAL_VERIFY_CHANNEL,
+        welcomeChannel: process.env.GENERAL_WELCOME_CHANNEL,
+        logsChannel: process.env.GENERAL_LOGS_CHANNEL,
+        roleNoVerify: process.env.GENERAL_ROLE_NO_VERIFY,
+        roleUser: process.env.GENERAL_ROLE_USER,
+        minAccountDays: 7,
+        minVerifyMinutes: 1,
+        spamLimit: 5,
+        spamInterval: 5000
+    },
+    whitelist: {
+        token: process.env.WHITELIST_TOKEN,
+        clientId: process.env.WHITELIST_CLIENT_ID,
+        guildId: process.env.WHITELIST_GUILD_ID,
+        staffRoleId: process.env.WHITELIST_STAFF_ROLE_ID,
+        channelId: process.env.WHITELIST_CHANNEL_ID,
+        normativa: "https://bit.ly/4qti5GP"
+    }
+};
