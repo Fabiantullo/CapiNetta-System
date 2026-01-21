@@ -9,6 +9,14 @@ module.exports = {
         console.log(`✅ Conectado como ${client.user.tag}`);
         console.log(`📦 [Debug] Comandos cargados en memoria: ${client.commands.size}`);
 
+        // Cargar caché de usuarios para evitar logs "fantasmas" de roles
+        const guild = client.guilds.cache.get(config.guildId);
+        if (guild) {
+            await guild.members.fetch().then(members => {
+                console.log(`👥 [Cache] Cargados ${members.size} miembros.`);
+            }).catch(err => logError(client, err, "Ready - Fetch Members"));
+        }
+
         const channel = await client.channels.fetch(config.verifyChannel).catch(err => {
             logError(client, err, "Ready - Fetch Verify Channel");
             return null;

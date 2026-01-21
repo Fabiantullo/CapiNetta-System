@@ -1,7 +1,7 @@
 const config = require("../../config").general;
 const { sendLog, logError } = require("../../utils/logger");
 
-const MIN_TIME_TO_VERIFY = 1 * 60 * 1000; // 1 minuto
+const MIN_TIME_TO_VERIFY = config.minVerifyMinutes * 60 * 1000;
 
 module.exports = {
     name: "interactionCreate",
