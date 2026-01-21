@@ -7,7 +7,7 @@ const config = require("../config").general;
  * @param {import("discord.js").User} user 
  * @param {string} text 
  */
-async function sendLog(client, user, text) {
+async function sendLog(client, user, text, messageToEdit = null) {
     const channel = await client.channels.fetch(config.logsChannel).catch(() => null);
     if (!channel) return;
     const embed = new EmbedBuilder()
@@ -15,7 +15,18 @@ async function sendLog(client, user, text) {
         .setDescription(text)
         .setColor(0xf1c40f)
         .setTimestamp();
-    channel.send({ embeds: [embed] }).catch(err => logError(client, err, "Send Log"));
+
+    if (messageToEdit) {
+        return messageToEdit.edit({ embeds: [embed] }).catch(err => {
+            logError(client, err, "Edit Log");
+            return null;
+        });
+    }
+
+    return channel.send({ embeds: [embed] }).catch(err => {
+        logError(client, err, "Send Log");
+        return null;
+    });
 }
 
 /**
