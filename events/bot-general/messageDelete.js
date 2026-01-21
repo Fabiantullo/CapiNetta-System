@@ -9,15 +9,31 @@ module.exports = {
 
         let executor = null;
         try {
+            // Esperar un momento para que Discord genere el audit log
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
             const logs = await message.guild.fetchAuditLogs({
                 limit: 1,
                 type: AuditLogEvent.MessageDelete
             });
+
             const entry = logs.entries.first();
-            // Discord solo guarda el usuario que borró el mensaje, no el mensaje exacto
-            if (entry && entry.target.id === message.author.id) executor = entry.executor;
+
+            // Verificamos si el log es reciente (últimos 5 segundos) y coincide con el canal y autor
+            if (entry &&
+                entry.target.id === message.author.id &&
+                entry.extra.channel.id === message.channel.id &&
+                entry.createdTimestamp > (Date.now() - 5000)) {
+                executor = entry.executor;
+            } else {
+                // Si no hay log reciente que coincida, asumimos que fue el propio autor
+                executor = message.author;
+            }
         } catch (err) {
             logError(client, err, "Fetch Delete Audit Log");
+            // En caso de error, mostramos "Desconocido" o el autor como fallback seguro? 
+            // Mejor dejar null para que el log diga "Autor / Desconocido" como pusimos abajo, o forzar autor.
+            // Dejaremos null para que entre en el ternario de abajo.
         }
 
         const channel = await client.channels.fetch(config.logsChannel).catch(() => null);
