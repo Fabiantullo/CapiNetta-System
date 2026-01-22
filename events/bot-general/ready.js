@@ -3,7 +3,7 @@ const config = require("../../config").general;
 const { logError } = require("../../utils/logger");
 
 module.exports = {
-    name: "clientReady", // Cambiado de 'ready' para evitar el warning
+    name: "clientReady", // Cambiado para evitar el warning de ready
     once: true,
     async execute(client) {
         console.log(`✅ ${client.user.tag} está online.`);
@@ -12,11 +12,12 @@ module.exports = {
         const vChannel = await client.channels.fetch(config.verifyChannel).catch(() => null);
         if (vChannel) {
             const msgs = await vChannel.messages.fetch({ limit: 10 });
+            // Buscamos si el bot ya mandó el mensaje de verificación
             const alreadySent = msgs.some(m => m.author.id === client.user.id && m.components.length > 0);
 
             if (!alreadySent) {
                 const verifyEmbed = new EmbedBuilder()
-                    .setAuthor({ name: "Administración | Capi Netta RP" })
+                    .setAuthor({ name: "Administración | Capi Netta RP" }) //
                     .setTitle("Obtén tu verificación")
                     .setDescription(
                         "¡Bienvenido/a a **Capi Netta RP**!\n\n" +
@@ -42,23 +43,24 @@ module.exports = {
         const sChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
         if (sChannel) {
             const pins = await sChannel.messages.fetchPins();
-            // Convertimos a array para evitar el error "pins.some is not a function"
+
+            // FIX CRÍTICO: Convertimos la colección a un Array real
             const pinsArray = Array.from(pins.values());
             const alreadyPinned = pinsArray.some(m => m.author.id === client.user.id);
 
             if (!alreadyPinned) {
                 const muteEmbed = new EmbedBuilder()
-                    .setTitle("📌 Instrucciones de la **ZONA MUTE**")
+                    .setTitle("📌 Instrucciones de la **ZONA MUTE**") //
                     .setDescription(
                         "Si estás viendo este canal, es porque nuestro sistema de seguridad detectó actividad sospechosa en tu cuenta.\n\n" +
                         "**¿Qué debo hacer?**\n" +
                         "1️⃣ **Cambiar tu contraseña:** Es probable que tu cuenta haya sido vulnerada.\n" +
                         "2️⃣ **Activar 2FA:** Recomendamos usar la autenticación en dos pasos.\n" +
                         "3️⃣ **Avisar al Staff:** Una vez que tu cuenta sea segura, escribí en este canal para que un administrador te devuelva tus roles.\n\n" +
-                        "Gracias por ayudar a mantener seguro el servidor de Capi Netta RP."
+                        "*Gracias por ayudar a mantener seguro el servidor de Capi Netta RP.*"
                     )
                     .setColor(0xf1c40f)
-                    .setFooter({ text: "Sistema de Seguridad Automático" });
+                    .setFooter({ text: "Sistema de Seguridad Automático" }); //
 
                 const msg = await sChannel.send({ embeds: [muteEmbed] });
                 await msg.pin().catch(err => logError(client, err, "Pinning Mute Instructions"));
