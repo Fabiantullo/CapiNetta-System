@@ -3,17 +3,17 @@ const config = require("../../config").general; //
 const { logError } = require("../../utils/logger");
 
 module.exports = {
-    name: "clientReady", // Corregido para evitar el warning de 'ready'
+    name: "clientReady", // Cambiado para que no tire más el "DeprecationWarning"
     once: true,
     async execute(client) {
         console.log(`✅ ${client.user.tag} está online.`);
 
-        // --- 1. Mensaje de Verificación ---
+        // --- 1. MENSAJE DE VERIFICACIÓN ---
         const vChannel = await client.channels.fetch(config.verifyChannel).catch(() => null);
         if (vChannel) {
             const msgs = await vChannel.messages.fetch({ limit: 10 });
-            // Verificamos si el bot ya mandó el mensaje con botones
-            const alreadySent = msgs.some(m => m.author.id === client.user.id && m.components.length > 0);
+            // Buscamos si el bot ya mandó el mensaje (evita duplicados)
+            const alreadySent = msgs.find(m => m.author.id === client.user.id && m.components.length > 0);
 
             if (!alreadySent) {
                 const verifyEmbed = new EmbedBuilder()
@@ -39,15 +39,18 @@ module.exports = {
             }
         }
 
-        // --- 2. Instrucciones de la ZONA MUTE ---
+        // --- 2. INSTRUCCIONES ZONA MUTE ---
         const sChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
         if (sChannel) {
             try {
-                // Obtenemos los mensajes fijados (pins)
+                // Obtenemos los mensajes fijados
                 const pins = await sChannel.messages.fetchPins();
 
-                // Comprobamos si el bot ya tiene un mensaje fijado ahí
-                const alreadyPinned = pins.some(m => m.author.id === client.user.id);
+                // Lógica ultra-compatible para evitar el error .some / .values
+                let alreadyPinned = false;
+                pins.forEach(m => {
+                    if (m.author.id === client.user.id) alreadyPinned = true;
+                });
 
                 if (!alreadyPinned) {
                     const muteEmbed = new EmbedBuilder()
@@ -58,16 +61,16 @@ module.exports = {
                             "1️⃣ **Cambiar tu contraseña:** Es probable que tu cuenta haya sido vulnerada.\n" +
                             "2️⃣ **Activar 2FA:** Recomendamos usar la autenticación en dos pasos.\n" +
                             "3️⃣ **Avisar al Staff:** Una vez que tu cuenta sea segura, escribí en este canal para que un administrador te devuelva tus roles.\n\n" +
-                            "*Gracias por ayudar a mantener seguro el servidor de Capi Netta RP.*"
+                            "*Gracias por ayudar a mantener seguro el servidor de Capi Netta RP.*\n" +
+                            "Sistema de Seguridad Automático"
                         )
-                        .setColor(0xf1c40f)
-                        .setFooter({ text: "Sistema de Seguridad Automático" }); //
+                        .setColor(0xf1c40f);
 
                     const msg = await sChannel.send({ embeds: [muteEmbed] });
                     await msg.pin().catch(() => { });
                 }
             } catch (err) {
-                logError(client, err, "Error en Pins de Soporte");
+                console.error("Error en Pins de Soporte:", err);
             }
         }
     },
