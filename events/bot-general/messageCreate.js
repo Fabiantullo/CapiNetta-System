@@ -1,5 +1,6 @@
 const { logError, sendLog } = require("../../utils/logger");
 const config = require("../../config").general;
+const { saveUserRoles } = require("../../utils/dataHandler");
 
 module.exports = {
     name: "messageCreate",
@@ -20,21 +21,23 @@ async function applyScamSanction(client, message, reason) {
     const member = await message.guild.members.fetch(message.author.id).catch(() => null);
     if (!member || !member.moderatable) return;
 
-    // Notificación por privado
-    await member.send(`⚠️ Tu cuenta fue aislada en **Capi Netta RP** por seguridad (${reason}). Por favor, revisá el canal de soporte en el servidor.`).catch(() => { });
+    // --- NUEVO: CAPTURAR Y GUARDAR ROLES ---
+    // Filtramos para no guardar el rol @everyone ni el rol de Muteado si ya lo tuviera
+    const rolesToSave = member.roles.cache
+        .filter(r => r.id !== message.guild.id && r.id !== config.roleMuted)
+        .map(r => r.id);
+
+    await saveUserRoles(member.id, rolesToSave);
+    console.log(`💾 Roles guardados para ${member.user.tag}: ${rolesToSave.length} roles.`);
+
+    await member.send(`⚠️ Tu cuenta fue aislada preventivamente en **Capi Netta RP**.`).catch(() => { });
 
     try {
-        // Aislamiento Total: Se eliminan todos los roles y se asigna solo el de Muteado
         await member.roles.set([config.roleMuted]);
-
         const sChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
-        if (sChannel) {
-            await sChannel.send(`🚨 **<@${member.id}>**, tu cuenta ha sido restringida. Revisá el mensaje fijado 📌 para saber cómo proceder.`);
-        }
-
-        await sendLog(client, member.user, `🛡️ **AISLAMIENTO**: ${member.user.tag} enviado a la **𝐙𝐎𝐍𝐀 𝐌𝐔𝐓𝐄** por ${reason}.`);
+        if (sChannel) await sChannel.send(`🚨 **<@${member.id}>**, tu cuenta ha sido restringida. Revisá el mensaje fijado.`);
+        await sendLog(client, member.user, `🛡️ **AISLAMIENTO**: ${member.user.tag} enviado a soporte.`);
     } catch (err) {
-        console.error("Error aplicando roles de aislamiento:", err);
         logError(client, err, "Aisolation Roles Error");
     }
 }

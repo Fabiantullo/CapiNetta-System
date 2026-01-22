@@ -13,16 +13,22 @@ const pool = mysql.createPool({
 });
 
 const initDB = async () => {
-    const query = `
-        CREATE TABLE IF NOT EXISTS warns (
-            userId VARCHAR(25) PRIMARY KEY,
-            count INT DEFAULT 0,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-    `;
-    await pool.query(query);
+    try {
+        const query = `
+            CREATE TABLE IF NOT EXISTS warns (
+                userId VARCHAR(25) PRIMARY KEY,
+                count INT DEFAULT 0,
+                roles TEXT DEFAULT NULL, 
+                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `;
+        await pool.query(query);
+        console.log("✅ Tabla MariaDB preparada para guardar roles.");
+    } catch (err) {
+        console.error("❌ Error inicializando MariaDB:", err);
+    }
 };
 
-initDB().catch(err => console.error("❌ Error inicializando MariaDB:", err));
+initDB();
 
 module.exports = pool;
