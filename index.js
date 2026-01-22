@@ -26,9 +26,11 @@ loadCommands(clientGeneral, "bot-general");
 loadEvents(clientWhitelist, "bot-whitelist");
 loadCommands(clientWhitelist, "bot-whitelist");
 
+process.on('unhandledRejection', error => console.error('❌ Unhandled Rejection:', error));
+process.on('uncaughtException', error => console.error('❌ Uncaught Exception:', error));
+
 (async () => {
   try {
-    // Cargar warns desde MariaDB antes del login
     clientGeneral.warnMap = await getWarnsFromDB();
     console.log("✅ [General] Warns cargados desde MariaDB.");
 

@@ -7,51 +7,35 @@ module.exports = {
     once: true,
     async execute(client) {
         console.log(`✅ Conectado como ${client.user.tag}`);
-        console.log(`📦 [Debug] Comandos cargados en memoria: ${client.commands.size}`);
 
-        // Cargar caché de usuarios para evitar logs "fantasmas" de roles
-        const guild = client.guilds.cache.get(config.guildId);
-        if (guild) {
-            await guild.members.fetch().then(members => {
-                console.log(`👥 [Cache] Cargados ${members.size} miembros.`);
-            }).catch(err => logError(client, err, "Ready - Fetch Members"));
+        // Verificación
+        const vChannel = await client.channels.fetch(config.verifyChannel).catch(() => null);
+        if (vChannel) {
+            const msgs = await vChannel.messages.fetch({ limit: 10 });
+            if (!msgs.some(m => m.author.id === client.user.id && m.components.length)) {
+                const embed = new EmbedBuilder()
+                    .setTitle("Obtén tu verificación")
+                    .setDescription("Bienvenido/a a **Capi Netta RP**. Presioná ✅")
+                    .setColor(0x3498db);
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId("verify").setEmoji("✅").setLabel("Verificarme").setStyle(ButtonStyle.Success)
+                );
+                await vChannel.send({ embeds: [embed], components: [row] });
+            }
         }
 
-        const channel = await client.channels.fetch(config.verifyChannel).catch(err => {
-            logError(client, err, "Ready - Fetch Verify Channel");
-            return null;
-        });
-        if (!channel) return;
-
-        const messages = await channel.messages.fetch({ limit: 10 });
-        const alreadySent = messages.some(
-            m => m.author.id === client.user.id && m.components.length
-        );
-        if (alreadySent) return;
-
-        const embed = new EmbedBuilder()
-            .setAuthor({
-                name: "Administración | Capi Netta RP"
-            })
-            .setTitle("Obtén tu verificación")
-            .setDescription(
-                "¡Bienvenido/a a **Capi Netta RP**!\n\n" +
-                "⏱️ Permanecé **1 minuto** en el servidor\n" +
-                "📜 Leé y aceptá las normativas\n\n" +
-                "Luego presioná el botón ✅"
-            )
-            .setColor(0x3498db)
-            .setTimestamp();
-
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("verify")
-                .setEmoji("✅")
-                .setLabel("Verificarme")
-                .setStyle(ButtonStyle.Success)
-        );
-
-        await channel.send({ embeds: [embed], components: [row] });
+        // Soporte (Mensaje fijado)
+        const sChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
+        if (sChannel) {
+            const pins = await sChannel.messages.fetchPins();
+            if (!pins.some(m => m.author.id === client.user.id)) {
+                const embed = new EmbedBuilder()
+                    .setTitle("📌 Instrucciones de la 𝐙𝐎𝐍𝐀 𝐌𝐔𝐓𝐄")
+                    .setDescription("1️⃣ Cambiá tu contraseña.\n2️⃣ Activá 2FA.\n3️⃣ Avisá al Staff aquí.")
+                    .setColor(0xf1c40f);
+                const msg = await sChannel.send({ embeds: [embed] });
+                await msg.pin().catch(() => { });
+            }
+        }
     },
 };

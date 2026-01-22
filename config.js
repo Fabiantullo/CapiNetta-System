@@ -1,4 +1,3 @@
-// CapiNetta-System/config.js
 require('dotenv').config();
 
 module.exports = {
@@ -10,15 +9,15 @@ module.exports = {
         logsChannel: process.env.GENERAL_LOGS_CHANNEL,
         roleNoVerify: process.env.GENERAL_ROLE_NO_VERIFY,
         roleUser: process.env.GENERAL_ROLE_USER,
-        roleMuted: process.env.GENERAL_ROLE_MUTED, //
-        supportScamChannel: process.env.GENERAL_SUPPORT_SCAM_CHANNEL, //
+        roleMuted: process.env.GENERAL_ROLE_MUTED,
+        supportScamChannel: process.env.GENERAL_SUPPORT_SCAM_CHANNEL,
         minAccountDays: 7,
         minVerifyMinutes: 1,
-        spamLimit: 5
+        spamLimit: 5,
+        spamInterval: 5000
     },
-    // ESTA ES LA SECCIÓN QUE FALTA O ESTÁ MAL UBICADA
     database: {
-        host: process.env.DB_HOST,
+        host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME
