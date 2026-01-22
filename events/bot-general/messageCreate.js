@@ -1,49 +1,68 @@
-const { logError } = require("../../utils/logger");
+const { logError, sendLog } = require("../../utils/logger");
+const config = require("../../config").general;
 
 module.exports = {
     name: "messageCreate",
     async execute(client, message) {
         if (!message.guild || message.author.bot) return;
 
-        const channelId = message.channel.id;
         const userId = message.author.id;
 
-        // Usar el mapa global adjunto al cliente
-        if (!client.consecutiveMap.has(channelId))
-            client.consecutiveMap.set(channelId, { lastUser: null, count: 0 });
-
-        const data = client.consecutiveMap.get(channelId);
-
-        if (data.lastUser === userId) data.count++;
-        else { data.lastUser = userId; data.count = 1; }
-
-        if (data.count >= 5) {
-            // Spam detectado
-            const currentWarns = (client.warnMap.get(userId) || 0) + 1;
-            client.warnMap.set(userId, currentWarns);
-
-            const { saveWarns } = require("../../utils/dataHandler");
-            saveWarns(client.warnMap); // Guardar cambios
-
-            data.count = 0; // Reset contador de spam inmediato
-
-            // Borrar el mensaje de spam si es posible
+        // 1. Anti-Scam: Menciones Masivas
+        if (message.mentions.users.size > 10) {
             await message.delete().catch(() => { });
+            return applyScamSanction(client, message, "Menciones masivas (Posible Scam)");
+        }
 
-            if (currentWarns < 3) {
-                // Warn 1 y 2
-                const msg = await message.channel.send(`⚠️ <@${userId}>, por favor evitá el spam. Advertencia **${currentWarns}/3**.`);
-                setTimeout(() => msg.delete().catch(err => logError(client, err, "Delete Warn Message")), 5000); // Borrar alerta a los 5s
-            } else {
-                // Warn 3: Timeout
-                const member = await message.guild.members.fetch(userId).catch(() => null);
-                if (member?.moderatable) {
-                    await member.timeout(10 * 60 * 1000, "Acumulación de advertencias por Spam (3/3)").catch(err => logError(client, err, "Spam Timeout"));
-                    message.channel.send(`🔇 <@${userId}> fue silenciado por 10 minutos debido a spam reiterado.`).catch(err => logError(client, err, "Spam Timeout Message"));
-                }
-                client.warnMap.delete(userId); // Reset warns después del castigo
-                saveWarns(client.warnMap); // Guardar cambios
-            }
+        // 2. Anti-Spam: Mensajes Idénticos
+        if (!client.consecutiveMap.has(userId)) {
+            client.consecutiveMap.set(userId, { lastContent: '', count: 0 });
+        }
+        const data = client.consecutiveMap.get(userId);
+
+        if (data.lastContent === message.content && message.content !== '') {
+            data.count++;
+            await message.delete().catch(() => { });
+        } else {
+            data.lastContent = message.content;
+            data.count = 1;
+        }
+
+        if (data.count >= 3) {
+            data.count = 0;
+            return applyScamSanction(client, message, "Spam de mensajes idénticos (Posible Scam)");
         }
     },
 };
+
+async function applyScamSanction(client, message, reason) {
+    const userId = message.author.id;
+    const member = await message.guild.members.fetch(userId).catch(() => null);
+
+    if (member && member.moderatable) {
+        // --- 1. Enviar mensaje por PRIVADO (DM) ---
+        await member.send({
+            content: `⚠️ **Aviso de Seguridad - Capi Netta RP**\n\nTu cuenta ha sido aislada preventivamente del servidor debido a: **${reason}**.\n\nEsto sucede usualmente cuando una cuenta es hackeada para enviar enlaces maliciosos. No te preocupes, hemos creado un canal de soporte para vos dentro del servidor para ayudarte a recuperar el acceso.`
+        }).catch(() => {
+            console.log(`No se pudo enviar DM a ${message.author.tag} (DMs cerrados).`);
+        });
+
+        // --- 2. Gestión de Roles ---
+        const roleUser = message.guild.roles.cache.get(config.roleUser);
+        const roleMuted = message.guild.roles.cache.get(config.roleMuted);
+
+        if (roleUser) await member.roles.remove(roleUser).catch(e => logError(client, e, "Scam - Remove Role"));
+        if (roleMuted) await member.roles.add(roleMuted).catch(e => logError(client, e, "Scam - Add Muted"));
+
+        // --- 3. Aviso en el canal de soporte ---
+        const supportChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
+        if (supportChannel) {
+            await supportChannel.send(
+                `🚨 **<@${userId}>**, se ha detectado actividad sospechosa en tu cuenta.\n` +
+                `Por favor, lee el mensaje fijado 📌 arriba para saber cómo recuperar tus permisos.`
+            );
+        }
+
+        await sendLog(client, message.author, `🛡️ **AISLAMIENTO**: ${message.author.tag} enviado a la **𝐙𝐎𝐍𝐀 𝐌𝐔𝐓𝐄** por posible scam.`);
+    }
+}

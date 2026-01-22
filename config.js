@@ -9,6 +9,8 @@ module.exports = {
         logsChannel: process.env.GENERAL_LOGS_CHANNEL,
         roleNoVerify: process.env.GENERAL_ROLE_NO_VERIFY,
         roleUser: process.env.GENERAL_ROLE_USER,
+        roleMuted: process.env.GENERAL_ROLE_MUTED,
+        supportScamChannel: process.env.GENERAL_SUPPORT_SCAM_CHANNEL,
         minAccountDays: 7,
         minVerifyMinutes: 1,
         spamLimit: 5,

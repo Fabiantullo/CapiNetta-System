@@ -1,15 +1,7 @@
-const {
-  Client,
-  GatewayIntentBits,
-  Partials
-} = require("discord.js");
-
+const { Client, GatewayIntentBits, Partials } = require("discord.js");
 const config = require("./config");
-const { getWarnsMap } = require("./utils/dataHandler");
+const { getWarnsFromDB } = require("./utils/dataHandler");
 
-/* =======================
-   CLIENTE GENERAL
-======================= */
 const clientGeneral = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -18,71 +10,33 @@ const clientGeneral = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates
   ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.GuildMember,
-    Partials.User
-  ]
+  partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User]
 });
 
-// Mapas globales para General
 clientGeneral.consecutiveMap = new Map();
-clientGeneral.timeoutMap = new Map();
-clientGeneral.warnMap = getWarnsMap(); // Cargar desde persistencia
+clientGeneral.warnMap = new Map();
 
-// Limpieza de warns (General)
-setInterval(() => {
-  clientGeneral.warnMap.clear();
-}, 60 * 60 * 1000);
+const clientWhitelist = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-/* =======================
-   CLIENTE WHITELIST
-======================= */
-const clientWhitelist = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
-
-/* =======================
-   HANDLERS DE ERRORES GLOBALES
-======================= */
-process.on('unhandledRejection', error => {
-  console.error('❌ Unhandled Rejection:', error);
-});
-
-process.on('uncaughtException', error => {
-  console.error('❌ Uncaught Exception:', error);
-});
-
-/* =======================
-   CARGA DE HANDLERS
-======================= */
 const loadEvents = require("./handlers/eventHandler");
 const loadCommands = require("./handlers/commandHandler");
 
-// Bot General
 loadEvents(clientGeneral, "bot-general");
 loadCommands(clientGeneral, "bot-general");
-
-// Bot Whitelist
 loadEvents(clientWhitelist, "bot-whitelist");
 loadCommands(clientWhitelist, "bot-whitelist");
 
-/* =======================
-   LOGIN
-======================= */
 (async () => {
   try {
+    // Cargar warns desde MariaDB antes del login
+    clientGeneral.warnMap = await getWarnsFromDB();
+    console.log("✅ [General] Warns cargados desde MariaDB.");
+
     await clientGeneral.login(config.general.token);
     console.log("✅ [General] Login exitoso.");
-  } catch (err) {
-    console.error("❌ [General] Error al iniciar sesión:", err);
-  }
-
-  try {
     await clientWhitelist.login(config.whitelist.token);
     console.log("✅ [Whitelist] Login exitoso.");
   } catch (err) {
-    console.error("❌ [Whitelist] Error al iniciar sesión:", err);
+    console.error("❌ Error en el inicio:", err);
   }
 })();

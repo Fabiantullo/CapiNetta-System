@@ -1,51 +1,34 @@
-const fs = require('fs');
-const path = require('path');
+const pool = require('./database');
 
-const dataDir = path.join(__dirname, '../data');
-const warnsFile = path.join(dataDir, 'warns.json');
-
-// Asegurar que existe el directorio
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir);
-}
-
-// Cargar warns
-function loadWarns() {
-    if (!fs.existsSync(warnsFile)) {
-        return new Map();
-    }
+async function getWarnsFromDB() {
     try {
-        const data = fs.readFileSync(warnsFile, 'utf8');
-        const json = JSON.parse(data);
-        return new Map(JSON.entries(json)); // Convertir objeto a Map no es directo en JSON standard, mejor usar objeto o array
+        const [rows] = await pool.query('SELECT userId, count FROM warns');
+        const warnMap = new Map();
+        rows.forEach(row => warnMap.set(row.userId, row.count));
+        return warnMap;
     } catch (e) {
-        console.error("Error cargando warns:", e);
+        console.error("Error cargando warns desde DB:", e);
         return new Map();
     }
 }
 
-// Guardar warns
-// Para simplificar, guardaremos el Map como un objeto JSON
-function saveWarns(warnMap) {
+async function saveWarnToDB(userId, count) {
     try {
-        const obj = Object.fromEntries(warnMap);
-        fs.writeFileSync(warnsFile, JSON.stringify(obj, null, 2));
+        await pool.query(
+            'INSERT INTO warns (userId, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = ?',
+            [userId, count, count]
+        );
     } catch (e) {
-        console.error("Error guardando warns:", e);
+        console.error("Error guardando warn en DB:", e);
     }
 }
 
-// Helper para convertir objeto cargado a Map correctamente
-function getWarnsMap() {
-    if (!fs.existsSync(warnsFile)) return new Map();
+async function resetWarnsInDB(userId) {
     try {
-        const data = fs.readFileSync(warnsFile, 'utf8');
-        const obj = JSON.parse(data);
-        return new Map(Object.entries(obj));
+        await pool.query('DELETE FROM warns WHERE userId = ?', [userId]);
     } catch (e) {
-        console.error("Error leyendo warns.json:", e);
-        return new Map();
+        console.error("Error reseteando warns en DB:", e);
     }
 }
 
-module.exports = { saveWarns, getWarnsMap };
+module.exports = { getWarnsFromDB, saveWarnToDB, resetWarnsInDB };
