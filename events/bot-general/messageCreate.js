@@ -11,7 +11,7 @@ module.exports = {
         // 1. Anti-Scam: Menciones Masivas
         if (message.mentions.users.size > 10) {
             await message.delete().catch(() => { });
-            return applyScamSanction(client, message, "Menciones masivas (Posible Scam)");
+            return applyScamSanction(client, message, "Menciones masivas");
         }
 
         // 2. Anti-Spam: Mensajes Idénticos
@@ -30,7 +30,7 @@ module.exports = {
 
         if (data.count >= 3) {
             data.count = 0;
-            return applyScamSanction(client, message, "Spam de mensajes idénticos (Posible Scam)");
+            return applyScamSanction(client, message, "Mensajes repetitivos");
         }
     },
 };
@@ -39,30 +39,40 @@ async function applyScamSanction(client, message, reason) {
     const userId = message.author.id;
     const member = await message.guild.members.fetch(userId).catch(() => null);
 
-    if (member && member.moderatable) {
-        // --- 1. Enviar mensaje por PRIVADO (DM) ---
-        await member.send({
-            content: `⚠️ **Aviso de Seguridad - Capi Netta RP**\n\nTu cuenta ha sido aislada preventivamente del servidor debido a: **${reason}**.\n\nEsto sucede usualmente cuando una cuenta es hackeada para enviar enlaces maliciosos. No te preocupes, hemos creado un canal de soporte para vos dentro del servidor para ayudarte a recuperar el acceso.`
-        }).catch(() => {
-            console.log(`No se pudo enviar DM a ${message.author.tag} (DMs cerrados).`);
-        });
+    if (!member) return;
 
-        // --- 2. Gestión de Roles ---
-        const roleUser = message.guild.roles.cache.get(config.roleUser);
-        const roleMuted = message.guild.roles.cache.get(config.roleMuted);
+    console.log(`[Seguridad] Aplicando sanción a ${member.user.tag}. Razón: ${reason}`);
 
-        if (roleUser) await member.roles.remove(roleUser).catch(e => logError(client, e, "Scam - Remove Role"));
-        if (roleMuted) await member.roles.add(roleMuted).catch(e => logError(client, e, "Scam - Add Muted"));
+    // --- 1. Enviar DM ---
+    await member.send(`⚠️ Tu cuenta fue aislada en **Capi Netta RP** por actividad sospechosa (${reason}). Revisá el canal de soporte.`).catch(() => {
+        console.log(`[Aviso] No pude enviar DM a ${member.user.tag} (DMs cerrados).`);
+    });
 
-        // --- 3. Aviso en el canal de soporte ---
-        const supportChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
-        if (supportChannel) {
-            await supportChannel.send(
-                `🚨 **<@${userId}>**, se ha detectado actividad sospechosa en tu cuenta.\n` +
-                `Por favor, lee el mensaje fijado 📌 arriba para saber cómo recuperar tus permisos.`
-            );
+    // --- 2. Gestión de Roles ---
+    // Usamos directamente los IDs del config
+    const roleIdUser = config.roleUser;
+    const roleIdMuted = config.roleMuted;
+
+    try {
+        if (roleIdUser && member.roles.cache.has(roleIdUser)) {
+            await member.roles.remove(roleIdUser);
+            console.log(`✅ Rol de usuario removido a ${member.user.tag}`);
         }
 
-        await sendLog(client, message.author, `🛡️ **AISLAMIENTO**: ${message.author.tag} enviado a la **𝐙𝐎𝐍𝐀 𝐌𝐔𝐓𝐄** por posible scam.`);
+        if (roleIdMuted) {
+            await member.roles.add(roleIdMuted);
+            console.log(`✅ Rol de Muteado agregado a ${member.user.tag}`);
+        }
+    } catch (err) {
+        console.error(`❌ ERROR DE JERARQUÍA: El bot no puede gestionar roles para ${member.user.tag}. Verificá que el rol del bot esté arriba de todo.`);
+        logError(client, err, "Aisol - Role Management");
     }
+
+    // --- 3. Aviso en canal de soporte ---
+    const supportChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
+    if (supportChannel) {
+        await supportChannel.send(`🚨 **<@${userId}>**, tu cuenta ha sido restringida. Revisá el mensaje fijado 📌 para saber cómo recuperar tu acceso.`);
+    }
+
+    await sendLog(client, message.author, `🛡️ **AISLAMIENTO**: ${message.author.tag} fue enviado a soporte por ${reason}.`);
 }
