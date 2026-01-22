@@ -3,21 +3,25 @@ const config = require("../../config").whitelist; //
 const { logError } = require("../../utils/logger");
 
 module.exports = {
-    name: "clientReady", // Corregido
+    name: "clientReady", //
     once: true,
     async execute(client) {
-        console.log(`✅ Capi Netta RP [Whitelist] está online.`);
+        console.log(`✅ ${client.user.tag} está online.`);
 
-        // Aplicamos la misma lógica de pins si tenés un canal de whitelist con mensajes fijados
-        const wlChannel = await client.channels.fetch(config.channelId).catch(() => null);
-        if (wlChannel) {
-            try {
+        try {
+            const wlChannel = await client.channels.fetch(config.channelId).catch(() => null);
+            if (wlChannel) {
                 const pins = await wlChannel.messages.fetchPins();
-                const alreadyPinned = pins.map(m => m.author.id).includes(client.user.id);
-                // Si necesitás mandar un mensaje inicial aquí, seguí la lógica del archivo anterior
-            } catch (err) {
-                console.log("No hay mensajes fijados en Whitelist o error de acceso.");
+                // FIX: Convertimos a Array real para evitar errores de .some
+                const pinsArray = [...pins.values()];
+                const alreadyPinned = pinsArray.some(m => m.author.id === client.user.id);
+
+                if (!alreadyPinned) {
+                    // Si necesitas enviar un mensaje inicial de whitelist, agregalo aquí.
+                }
             }
+        } catch (err) {
+            console.log("No hay mensajes fijados en Whitelist o error de acceso.");
         }
     },
 };
