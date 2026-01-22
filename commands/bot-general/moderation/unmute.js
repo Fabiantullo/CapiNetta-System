@@ -22,5 +22,6 @@ module.exports = {
         if (roleUser) await member.roles.add(roleUser).catch(() => { });
 
         await interaction.reply({ content: `✅ **${user.tag}** ha sido verificado y recuperó sus permisos.`, ephemeral: false });
+
     },
 };
