@@ -41,37 +41,34 @@ async function applyScamSanction(client, message, reason) {
 
     if (!member) return;
 
-    console.log(`[Seguridad] Aplicando sanción a ${member.user.tag}. Razón: ${reason}`);
+    console.log(`[Seguridad] Aplicando aislamiento a ${member.user.tag}. Razón: ${reason}`);
 
     // --- 1. Enviar DM ---
-    await member.send(`⚠️ Tu cuenta fue aislada en **Capi Netta RP** por actividad sospechosa (${reason}). Revisá el canal de soporte.`).catch(() => {
-        console.log(`[Aviso] No pude enviar DM a ${member.user.tag} (DMs cerrados).`);
+    await member.send(`⚠️ Tu cuenta fue aislada en **Capi Netta RP** por actividad sospechosa. Revisá el canal de soporte.`).catch(() => {
+        console.log(`[Aviso] DMs cerrados para ${member.user.tag}`);
     });
 
-    // --- 2. Gestión de Roles ---
-    // Usamos directamente los IDs del config
-    const roleIdUser = config.roleUser;
+    // --- 2. Gestión de Roles (Limpieza Total) ---
     const roleIdMuted = config.roleMuted;
 
-    try {
-        if (roleIdUser && member.roles.cache.has(roleIdUser)) {
-            await member.roles.remove(roleIdUser);
-            console.log(`✅ Rol de usuario removido a ${member.user.tag}`);
-        }
+    if (!roleIdMuted) {
+        return console.error("❌ ERROR: El ID del rol Muted es undefined. Revisá tu .env y reiniciá PM2.");
+    }
 
-        if (roleIdMuted) {
-            await member.roles.add(roleIdMuted);
-            console.log(`✅ Rol de Muteado agregado a ${member.user.tag}`);
-        }
+    try {
+        // .set([ID]) elimina TODOS los roles y pone solo el que le pasamos
+        await member.roles.set([roleIdMuted]);
+        console.log(`✅ Usuario ${member.user.tag} aislado correctamente con rol Muted.`);
     } catch (err) {
-        console.error(`❌ ERROR DE JERARQUÍA: El bot no puede gestionar roles para ${member.user.tag}. Verificá que el rol del bot esté arriba de todo.`);
-        logError(client, err, "Aisol - Role Management");
+        console.error(`❌ ERROR DE JERARQUÍA: El bot no puede gestionar roles de ${member.user.tag}.`);
+        console.error("Asegurate de que el rol del BOT esté ARRIBA de 'Whitelist Aprobada' y 'Muteado' en los ajustes de Discord.");
+        logError(client, err, "Aisol - Role Set");
     }
 
     // --- 3. Aviso en canal de soporte ---
     const supportChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
     if (supportChannel) {
-        await supportChannel.send(`🚨 **<@${userId}>**, tu cuenta ha sido restringida. Revisá el mensaje fijado 📌 para saber cómo recuperar tu acceso.`);
+        await supportChannel.send(`🚨 **<@${userId}>**, tu cuenta ha sido restringida por seguridad. Mirá el mensaje fijado 📌.`);
     }
 
     await sendLog(client, message.author, `🛡️ **AISLAMIENTO**: ${message.author.tag} fue enviado a soporte por ${reason}.`);
