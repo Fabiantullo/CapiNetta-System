@@ -3,25 +3,25 @@ const config = require("../../config").whitelist; //
 const { logError } = require("../../utils/logger");
 
 module.exports = {
-    name: "clientReady", //
+    name: "clientReady", // Cambiado para evitar el warning
     once: true,
     async execute(client) {
-        console.log(`✅ ${client.user.tag} está online.`);
+        console.log(`✅ ${client.user.tag} [Whitelist] está online.`);
 
-        try {
-            const wlChannel = await client.channels.fetch(config.channelId).catch(() => null);
-            if (wlChannel) {
+        const wlChannel = await client.channels.fetch(config.channelId).catch(() => null);
+        if (wlChannel) {
+            try {
                 const pins = await wlChannel.messages.fetchPins();
-                // FIX: Convertimos a Array real para evitar errores de .some
-                const pinsArray = [...pins.values()];
-                const alreadyPinned = pinsArray.some(m => m.author.id === client.user.id);
+                // Usamos directamente .some() de la colección de Discord
+                const alreadyPinned = pins.some(m => m.author.id === client.user.id);
 
                 if (!alreadyPinned) {
-                    // Si necesitas enviar un mensaje inicial de whitelist, agregalo aquí.
+                    // Si necesitás un mensaje inicial de Whitelist, agregalo aquí.
+                    console.log("No hay mensajes fijados en el canal de Whitelist.");
                 }
+            } catch (err) {
+                logError(client, err, "Whitelist Ready Pins");
             }
-        } catch (err) {
-            console.log("No hay mensajes fijados en Whitelist o error de acceso.");
         }
     },
 };

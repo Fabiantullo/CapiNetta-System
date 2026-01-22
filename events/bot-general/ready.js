@@ -9,49 +9,45 @@ module.exports = {
         console.log(`✅ ${client.user.tag} está online.`);
 
         // --- 1. Mensaje de Verificación ---
-        try {
-            const vChannel = await client.channels.fetch(config.verifyChannel).catch(() => null);
-            if (vChannel) {
-                const msgs = await vChannel.messages.fetch({ limit: 10 });
-                // FIX: Convertimos a Array real para evitar el error .some is not a function
-                const msgsArray = [...msgs.values()];
-                const alreadySent = msgsArray.some(m => m.author.id === client.user.id && m.components.length > 0);
+        const vChannel = await client.channels.fetch(config.verifyChannel).catch(() => null);
+        if (vChannel) {
+            const msgs = await vChannel.messages.fetch({ limit: 10 });
+            // Verificamos si el bot ya mandó el mensaje con botones
+            const alreadySent = msgs.some(m => m.author.id === client.user.id && m.components.length > 0);
 
-                if (!alreadySent) {
-                    const verifyEmbed = new EmbedBuilder()
-                        .setAuthor({ name: "Administración | Capi Netta RP" }) //
-                        .setTitle("Obtén tu verificación")
-                        .setDescription(
-                            "¡Bienvenido/a a **Capi Netta RP**!\n\n" +
-                            "⏱️ Permanecé **1 minuto** en el servidor\n" +
-                            "📜 Leé y aceptá las normativas\n\n" +
-                            "Luego presioná el botón ✅"
-                        )
-                        .setColor(0x3498db);
+            if (!alreadySent) {
+                const verifyEmbed = new EmbedBuilder()
+                    .setAuthor({ name: "Administración | Capi Netta RP" }) //
+                    .setTitle("Obtén tu verificación")
+                    .setDescription(
+                        "¡Bienvenido/a a **Capi Netta RP**!\n\n" +
+                        "⏱️ Permanecé **1 minuto** en el servidor\n" +
+                        "📜 Leé y aceptá las normativas\n\n" +
+                        "Luego presioná el botón ✅"
+                    )
+                    .setColor(0x3498db);
 
-                    const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId("verify")
-                            .setEmoji("✅")
-                            .setLabel("Verificarme")
-                            .setStyle(ButtonStyle.Success)
-                    );
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId("verify")
+                        .setEmoji("✅")
+                        .setLabel("Verificarme")
+                        .setStyle(ButtonStyle.Success)
+                );
 
-                    await vChannel.send({ embeds: [verifyEmbed], components: [row] });
-                }
+                await vChannel.send({ embeds: [verifyEmbed], components: [row] });
             }
-        } catch (err) {
-            console.error("Error en lógica de verificación:", err);
         }
 
         // --- 2. Instrucciones de la ZONA MUTE ---
-        try {
-            const sChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
-            if (sChannel) {
+        const sChannel = await client.channels.fetch(config.supportScamChannel).catch(() => null);
+        if (sChannel) {
+            try {
+                // Obtenemos los mensajes fijados (pins)
                 const pins = await sChannel.messages.fetchPins();
-                // FIX: Convertimos a Array real para evitar el error .some / .map is not a function
-                const pinsArray = [...pins.values()];
-                const alreadyPinned = pinsArray.some(m => m.author.id === client.user.id);
+
+                // Comprobamos si el bot ya tiene un mensaje fijado ahí
+                const alreadyPinned = pins.some(m => m.author.id === client.user.id);
 
                 if (!alreadyPinned) {
                     const muteEmbed = new EmbedBuilder()
@@ -70,9 +66,9 @@ module.exports = {
                     const msg = await sChannel.send({ embeds: [muteEmbed] });
                     await msg.pin().catch(() => { });
                 }
+            } catch (err) {
+                logError(client, err, "Error en Pins de Soporte");
             }
-        } catch (error) {
-            logError(client, error, "Ready - Support Pins");
         }
     },
 };
