@@ -1,3 +1,4 @@
+// CapiNetta-System/config.js
 require('dotenv').config();
 
 module.exports = {
@@ -13,8 +14,14 @@ module.exports = {
         supportScamChannel: process.env.GENERAL_SUPPORT_SCAM_CHANNEL,
         minAccountDays: 7,
         minVerifyMinutes: 1,
-        spamLimit: 5,
-        spamInterval: 5000
+        spamLimit: 5
+    },
+    // ESTA ES LA SECCIÓN QUE FALTA O ESTÁ MAL UBICADA
+    database: {
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME
     },
     whitelist: {
         token: process.env.WHITELIST_TOKEN,

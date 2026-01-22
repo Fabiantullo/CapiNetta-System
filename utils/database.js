@@ -1,5 +1,6 @@
+// CapiNetta-System/utils/database.js
 const mysql = require('mysql2/promise');
-const config = require('../config').database;
+const config = require('../config').database; // Aquí config ya es el objeto database
 
 const pool = mysql.createPool({
     host: config.host,
