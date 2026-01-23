@@ -1,18 +1,18 @@
 const pool = require('./database');
 
-async function saveUserRoles(userId, rolesArray) {
+async function saveUserRoles(guildId, userId, rolesArray) {
     try {
         const rolesData = JSON.stringify(rolesArray);
         await pool.query(
-            'INSERT INTO warns (userId, roles) VALUES (?, ?) ON DUPLICATE KEY UPDATE roles = ?',
-            [userId, rolesData, rolesData]
+            'INSERT INTO warns (guildId, userId, roles) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE roles = ?',
+            [guildId, userId, rolesData, rolesData]
         );
     } catch (e) { console.error("Error guardando roles:", e); }
 }
 
-async function getUserRoles(userId) {
+async function getUserRoles(guildId, userId) {
     try {
-        const [rows] = await pool.query('SELECT roles FROM warns WHERE userId = ?', [userId]);
+        const [rows] = await pool.query('SELECT roles FROM warns WHERE guildId = ? AND userId = ?', [guildId, userId]);
         if (rows.length > 0 && rows[0].roles) return JSON.parse(rows[0].roles);
         return null;
     } catch (e) { return null; }
