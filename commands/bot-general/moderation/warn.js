@@ -4,7 +4,7 @@ const { saveWarnToDB, addWarnLog } = require('../../../utils/dataHandler');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('warn')
-        .setDescription('Advierte a un usuario y guarda registro en DB.')
+        .setDescription('Advierte a un usuario y guarda registro.')
         .addUserOption(opt => opt.setName('usuario').setDescription('El usuario').setRequired(true))
         .addStringOption(opt => opt.setName('razon').setDescription('Razón'))
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
