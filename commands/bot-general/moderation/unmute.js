@@ -12,12 +12,12 @@ module.exports = {
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
         if (!member) return interaction.reply({ content: 'No encontrado.', ephemeral: true });
 
-        const savedRoles = await getUserRoles(user.id);
+        const savedRoles = await getUserRoles(interaction.guild.id, user.id);
 
         try {
             if (savedRoles && savedRoles.length > 0) {
                 await member.roles.set(savedRoles);
-                await clearUserRoles(user.id); // Limpieza de persistencia
+                await clearUserRoles(interaction.guild.id, user.id); // Limpieza de persistencia
                 await interaction.reply(`✅ **${user.tag}** liberado y roles restaurados.`);
             } else {
                 await interaction.reply({ content: "⚠️ No hay roles guardados para este usuario.", ephemeral: true });
