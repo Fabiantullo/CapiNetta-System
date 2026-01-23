@@ -26,7 +26,10 @@ module.exports = {
                 .setStyle(ButtonStyle.Success)
         );
 
+        // Intentamos enviar el mensaje al canal donde se usó el comando
         await interaction.channel.send({ embeds: [verifyEmbed], components: [row] });
+
+        // Respondemos solo a vos para confirmar
         await interaction.reply({ content: "✅ Sistema de verificación enviado.", ephemeral: true });
     },
 };
