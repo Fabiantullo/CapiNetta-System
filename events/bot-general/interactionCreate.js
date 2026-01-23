@@ -1,31 +1,47 @@
 const { MessageFlags } = require("discord.js");
 const config = require("../../config").general;
 const { sendLog, logError } = require("../../utils/logger");
+const { getGuildSettings } = require("../../utils/dataHandler");
 
 module.exports = {
     name: "interactionCreate",
     async execute(client, interaction) {
+        // 1. Manejo de Comandos Slash
         if (interaction.isChatInputCommand()) {
             const command = client.commands.get(interaction.commandName);
             if (!command) return;
             try {
                 await command.execute(interaction);
             } catch (error) {
-                logError(client, error, `Comando: ${interaction.commandName}`);
+                logError(client, error, `Comando: ${interaction.commandName}`, interaction.guild.id);
             }
             return;
         }
 
+        // 2. Manejo del Botón de Verificación
         if (interaction.isButton() && interaction.customId === "verify") {
             const member = interaction.member;
+            const guildId = interaction.guild.id;
 
-            if (member.roles.cache.has(config.roleUser)) {
+            // Buscamos la configuración dinámica de este servidor
+            const settings = await getGuildSettings(guildId);
+
+            if (!settings || !settings.isSetup) {
+                return interaction.reply({
+                    content: "⚠️ Este servidor no ha sido configurado. Avisale a un administrador que use `/setup`.",
+                    flags: [MessageFlags.Ephemeral]
+                });
+            }
+
+            // Verificamos si ya tiene el rol de usuario de ESTE servidor
+            if (member.roles.cache.has(settings.roleUser)) {
                 return interaction.reply({
                     content: "⚠️ Ya te encontrás verificado en el servidor.",
                     flags: [MessageFlags.Ephemeral]
                 });
             }
 
+            // Lógica de tiempo de espera (minVerifyMinutes sigue siendo global del config)
             const MIN_TIME = config.minVerifyMinutes * 60 * 1000;
             const timePassed = Date.now() - member.joinedTimestamp;
 
@@ -37,16 +53,21 @@ module.exports = {
                 });
             }
 
-            // Quitar rol sin verificar y poner usuario
-            await member.roles.remove(config.roleNoVerify).catch(() => { });
-            await member.roles.add(config.roleUser).catch(() => { });
+            try {
+                // Quitar rol sin verificar y poner usuario específicos de este server
+                if (settings.roleNoVerify) await member.roles.remove(settings.roleNoVerify).catch(() => { });
+                await member.roles.add(settings.roleUser).catch(() => { });
 
-            await interaction.reply({
-                content: "✅ Te has verificado correctamente. ¡Bienvenido/a!",
-                flags: [MessageFlags.Ephemeral]
-            });
+                await interaction.reply({
+                    content: "✅ Te has verificado correctamente. ¡Bienvenido/a!",
+                    flags: [MessageFlags.Ephemeral]
+                });
 
-            sendLog(client, interaction.user, `✅ **${interaction.user.tag}** completó la verificación.`);
+                sendLog(client, interaction.user, `✅ **${interaction.user.tag}** completó la verificación.`, guildId);
+            } catch (err) {
+                logError(client, err, "Error en proceso de verificación", guildId);
+                await interaction.reply({ content: "❌ Hubo un error al asignar tus roles. Contactá al staff.", flags: [MessageFlags.Ephemeral] });
+            }
         }
     },
 };
