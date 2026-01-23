@@ -1,0 +1,17 @@
+{
+    "name": "capi-netta-rp",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+        "install:clean": "npm install",
+        "deploy": "node deploy-commands.js",
+        "start": "node index.js",
+        "prod": "pm2 start ecosystem.config.js",
+        "setup": "npm install && node deploy-commands.js && npm run prod"
+    },
+    "dependencies": {
+        "discord.js": "^14.13.0",
+        "dotenv": "^16.3.1",
+        "mysql2": "^3.6.1"
+    }
+}
