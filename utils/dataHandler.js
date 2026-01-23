@@ -18,19 +18,20 @@ async function getUserRoles(guildId, userId) {
     } catch (e) { return null; }
 }
 
-async function clearUserRoles(userId) {
+async function clearUserRoles(guildId, userId) {
     try {
-        await pool.query('UPDATE warns SET roles = NULL WHERE userId = ?', [userId]);
+        await pool.query('UPDATE warns SET roles = NULL WHERE guildId = ? AND userId = ?', [guildId, userId]);
     } catch (e) { console.error("Error limpiando roles:", e); }
 }
 
-async function saveWarnToDB(userId, count) {
+// Ahora guarda las advertencias por servidor
+async function saveWarnToDB(guildId, userId, count) {
     try {
         await pool.query(
-            'INSERT INTO warns (userId, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = ?',
-            [userId, count, count]
+            'INSERT INTO warns (guildId, userId, count) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE count = ?',
+            [guildId, userId, count, count]
         );
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Error guardando warn:", e); }
 }
 
 async function addWarnLog(userId, moderatorId, reason, warnNumber) {
