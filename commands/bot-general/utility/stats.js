@@ -84,8 +84,6 @@ module.exports = {
             )
             .setFooter({ text: `Latencia API: ${interaction.client.ws.ping}ms | Capi Netta RP` })
             .setTimestamp();
-
-        // Respondemos de forma efímera para que solo vos lo veas
         await interaction.reply({ embeds: [statsEmbed], ephemeral: true });
     },
 };
