@@ -54,9 +54,30 @@ async function sendProfileLog(client, user, fieldName, fieldValue) {
  * @param {Error} error 
  * @param {string} context 
  */
-function logError(client, error, context = "General") {
+async function logError(client, error, context = "General", guildId = null) {
     console.error(`[${new Date().toISOString()}] ❌ Error en ${context}:`, error);
-    // Aquí podrías agregar lógica para enviar el error a un canal de admins si quisieras
-}
 
+    if (client && guildId) {
+        try {
+            const { getGuildSettings } = require("./dataHandler");
+            const settings = await getGuildSettings(guildId);
+            const channelId = settings?.debugChannel || settings?.logsChannel;
+
+            if (channelId) {
+                const channel = await client.channels.fetch(channelId).catch(() => null);
+                if (channel) {
+                    const embed = new EmbedBuilder()
+                        .setTitle(`🚨 Fallo detectado: ${context}`)
+                        .setDescription(`\`\`\`js\n${error.stack || error.message || error}\n\`\`\``)
+                        .setColor(0xff0000)
+                        .setTimestamp();
+
+                    await channel.send({ embeds: [embed] }).catch(() => { });
+                }
+            }
+        } catch (err) {
+            console.error("⚠️ No se pudo enviar el reporte de error a Discord:", err);
+        }
+    }
+}
 module.exports = { sendLog, sendProfileLog, logError };

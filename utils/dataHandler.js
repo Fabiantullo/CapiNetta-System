@@ -59,13 +59,17 @@ async function getGuildSettings(guildId) {
 }
 
 async function updateGuildSettings(guildId, settings) {
-    const { logs, verify, welcome, support, rUser, rNoVerify, rMuted } = settings;
+    const { logs, debug, verify, welcome, support, rUser, rNoVerify, rMuted } = settings;
     const sql = `
-        INSERT INTO guild_settings (guildId, logsChannel, verifyChannel, welcomeChannel, supportChannel, roleUser, roleNoVerify, roleMuted, isSetup)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+        INSERT INTO guild_settings (guildId, logsChannel, debugChannel, verifyChannel, welcomeChannel, supportChannel, roleUser, roleNoVerify, roleMuted, isSetup)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
         ON DUPLICATE KEY UPDATE 
-        logsChannel=?, verifyChannel=?, welcomeChannel=?, supportChannel=?, roleUser=?, roleNoVerify=?, roleMuted=?, isSetup=TRUE`;
-    await pool.query(sql, [guildId, logs, verify, welcome, support, rUser, rNoVerify, rMuted, logs, verify, welcome, support, rUser, rNoVerify, rMuted]);
+        logsChannel=?, debugChannel=?, verifyChannel=?, welcomeChannel=?, supportChannel=?, roleUser=?, roleNoVerify=?, roleMuted=?, isSetup=TRUE`;
+
+    await pool.query(sql, [
+        guildId, logs, debug, verify, welcome, support, rUser, rNoVerify, rMuted,
+        logs, debug, verify, welcome, support, rUser, rNoVerify, rMuted
+    ]);
 }
 
 module.exports = {

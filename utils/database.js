@@ -39,6 +39,7 @@ const initDB = async () => {
             CREATE TABLE IF NOT EXISTS guild_settings (
                 guildId VARCHAR(25) PRIMARY KEY,
                 logsChannel VARCHAR(25),
+                debugChannel VARCHAR(25),
                 verifyChannel VARCHAR(25),
                 welcomeChannel VARCHAR(25),
                 supportChannel VARCHAR(25),
