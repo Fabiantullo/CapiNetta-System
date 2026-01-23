@@ -1,11 +1,13 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, version: djsVersion } = require('discord.js');
 const os = require('os');
 const { execSync } = require('child_process');
-const pool = require('../../../utils/database');
+const pool = require('../../../utils/database'); //
 
-// Función para crear barras de progreso visuales
+/**
+ * Genera una barra de progreso visual
+ */
 function createBar(percent, size = 10) {
-    const progress = Math.round(size * (percent / 100));
+    const progress = Math.round(size * (Math.min(percent, 100) / 100));
     const emptyProgress = size - progress;
     const progressText = '▇'.repeat(progress);
     const emptyProgressText = '—'.repeat(emptyProgress);
@@ -15,63 +17,75 @@ function createBar(percent, size = 10) {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('Panel visual de salud del sistema y del bot')
+        .setDescription('Panel visual de salud del sistema, CPU y servidores activos')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        // 1. Cálculos de Memoria
+        // 1. CÁLCULOS DE CPU
+        const cpus = os.cpus();
+        const load = os.loadavg();
+        const cpuUsage = ((load[0] / cpus.length) * 100).toFixed(1);
+
+        // 2. CÁLCULOS DE MEMORIA
         const totalMem = (os.totalmem() / (1024 ** 3)).toFixed(2);
         const freeMem = (os.freemem() / (1024 ** 3)).toFixed(2);
         const usedMem = (totalMem - freeMem).toFixed(2);
         const memPerc = ((usedMem / totalMem) * 100).toFixed(1);
         const processMem = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
 
-        // 2. Almacenamiento
+        // 3. DISCO RÍGIDO
         let diskInfo = { total: '0', used: '0', free: '0', perc: 0 };
         try {
             const rawDisk = execSync("df -h / | tail -1").toString().trim().split(/\s+/);
             diskInfo = { total: rawDisk[1], used: rawDisk[2], free: rawDisk[3], perc: parseInt(rawDisk[4]) };
-        } catch (e) { /* Fallback */ }
+        } catch (e) { }
 
-        // 3. Base de Datos
+        // 4. BASE DE DATOS
         let dbStatus = "🔴 Desconectada";
         try {
             const start = Date.now();
             await pool.query('SELECT 1');
             dbStatus = `🟢 Online (${Date.now() - start}ms)`;
-        } catch (e) { dbStatus = "🔴 Error"; }
+        } catch (e) { }
+
+        // 5. PRESENCIA Y SERVIDORES
+        const botUptime = (interaction.client.uptime / 3600000).toFixed(1);
+        const guilds = interaction.client.guilds.cache;
+        const totalUsers = guilds.reduce((a, g) => a + g.memberCount, 0);
+
+        // Generamos la lista de servidores activos
+        const guildList = guilds.map(g => `• **${g.name}** (${g.memberCount} miembros)`).join('\n');
 
         const statsEmbed = new EmbedBuilder()
             .setTitle('🖥️ Panel de Control | Oracle Cloud')
             .setColor(0x2ecc71)
+            .setThumbnail(interaction.client.user.displayAvatarURL())
             .addFields(
                 {
-                    name: '🌐 Estado del Bot', value: [
-                        `**Servidores:** ${interaction.client.guilds.cache.size}`,
-                        `**Uptime:** ${(interaction.client.uptime / 3600000).toFixed(1)}h`,
+                    name: '🌐 Estado General', value: [
+                        `**Servidores:** ${guilds.size}`,
+                        `**Usuarios Totales:** ${totalUsers}`,
+                        `**Uptime:** ${botUptime}h`,
                         `**DB:** ${dbStatus}`
                     ].join('\n'), inline: true
                 },
 
                 {
-                    name: '🧠 Memoria RAM', value: [
-                        createBar(memPerc),
-                        `\`${usedMem}GB / ${totalMem}GB\``,
-                        `*Bot usa: ${processMem}MB*`
+                    name: '⚙️ CPU & RAM', value: [
+                        `**CPU:** ${createBar(cpuUsage)}`,
+                        `**RAM:** ${createBar(memPerc)}`,
+                        `**Proceso:** \`${processMem}MB\``
                     ].join('\n'), inline: true
                 },
 
-                {
-                    name: '💾 Disco Rígido', value: [
-                        createBar(diskInfo.perc),
-                        `\`${diskInfo.used} / ${diskInfo.total} (Libre: ${diskInfo.free})\``
-                    ].join('\n'), inline: false
-                },
+                { name: '🏘️ Servidores Activos', value: guildList.length > 1024 ? guildList.substring(0, 1021) + '...' : guildList || 'Ninguno', inline: false },
 
-                { name: '🛠️ Software', value: `\`Node: ${process.version}\` | \`D.js: v${djsVersion}\``, inline: false }
+                { name: '💾 Almacenamiento', value: createBar(diskInfo.perc, 20) + `\n\`Usado: ${diskInfo.used} / ${diskInfo.total} (Libre: ${diskInfo.free})\``, inline: false }
             )
-            .setFooter({ text: `Latencia API: ${interaction.client.ws.ping}ms` })
+            .setFooter({ text: `Latencia API: ${interaction.client.ws.ping}ms | Capi Netta RP` })
             .setTimestamp();
+
+        // Respondemos de forma efímera para que solo vos lo veas
         await interaction.reply({ embeds: [statsEmbed], ephemeral: true });
     },
 };
