@@ -4,33 +4,22 @@ const { saveUserRoles, getGuildSettings } = require("../../utils/dataHandler");
 module.exports = {
     name: "messageCreate",
     async execute(client, message) {
-        // Ignorar si no es un servidor o si es un bot
         if (!message.guild || message.author.bot) return;
 
-        // 1. Obtener la configuración específica de este servidor desde la DB
         const settings = await getGuildSettings(message.guild.id);
-
-        // Si el bot no ha sido configurado con /setup en este server, ignoramos
         if (!settings || !settings.isSetup) return;
 
-        // 2. Lógica Anti-Scam (Menciones masivas o mensajes repetidos)
         const isScam = message.mentions.users.size > 10 || checkDuplicate(client, message);
 
         if (isScam) {
             try {
-                // 1. Buscamos los últimos mensajes en el canal (por ejemplo, los últimos 10)
                 const messages = await message.channel.messages.fetch({ limit: 10 });
-
-                // 2. Filtramos solo los que pertenecen al spammer
                 const spamMessages = messages.filter(m => m.author.id === message.author.id);
 
-                // 3. Los eliminamos todos de un saque
                 await message.channel.bulkDelete(spamMessages).catch(() => {
-                    // Fallback: si falla bulkDelete, borramos al menos el actual
                     message.delete().catch(() => { });
                 });
 
-                // 4. Aplicamos la sanción (roles y aviso en soporte)
                 await applyScamSanction(
                     client,
                     message,
@@ -44,44 +33,34 @@ module.exports = {
     },
 };
 
-/**
- * Aplica la sanción de aislamiento preventivo usando la configuración de la DB
- */
 async function applyScamSanction(client, message, reason, settings) {
     const member = await message.guild.members.fetch(message.author.id).catch(() => null);
     if (!member || !member.moderatable) return;
 
-    // --- CAPTURAR Y GUARDAR ROLES ---
-    // Filtramos usando el ID de rol de silenciado guardado en la DB para este server
     const rolesToSave = member.roles.cache
         .filter(r => r.id !== message.guild.id && r.id !== settings.roleMuted)
         .map(r => r.id);
 
-    await saveUserRoles(member.id, rolesToSave);
-    console.log(`💾 Roles guardados para ${member.user.tag} en ${message.guild.name}: ${rolesToSave.length} roles.`);
+    // Ajuste clave: Pasamos el guildId para la nueva DB
+    await saveUserRoles(message.guild.id, member.id, rolesToSave);
 
     await member.send(`⚠️ Tu cuenta fue aislada preventivamente en **${message.guild.name}** por seguridad.`).catch(() => { });
 
     try {
-        // Aplicamos el rol de silenciado específico de este servidor
         await member.roles.set([settings.roleMuted]);
 
-        // Enviamos alerta al canal de soporte configurado para este servidor
         const sChannel = await client.channels.fetch(settings.supportChannel).catch(() => null);
         if (sChannel) {
             await sChannel.send(`🚨 **<@${member.id}>**, tu cuenta ha sido restringida por: ${reason}. Revisá el mensaje fijado.`);
         }
 
-        // Enviamos el log de auditoría
-        await sendLog(client, member.user, `🛡️ **AISLAMIENTO**: ${member.user.tag} enviado a soporte por ${reason}.`);
+        // Pasamos el guildId al log
+        await sendLog(client, member.user, `🛡️ **AISLAMIENTO**: ${member.user.tag} enviado a soporte por ${reason}.`, message.guild.id);
     } catch (err) {
-        logError(client, err, "Aisolation Roles Error");
+        logError(client, err, "Aisolation Roles Error", message.guild.id);
     }
 }
 
-/**
- * Verifica si un usuario está enviando el mismo mensaje repetidamente
- */
 function checkDuplicate(client, message) {
     if (!client.consecutiveMap.has(message.author.id)) {
         client.consecutiveMap.set(message.author.id, { content: '', count: 0 });
