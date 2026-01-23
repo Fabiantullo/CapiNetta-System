@@ -72,7 +72,6 @@ module.exports = {
             )
             .setFooter({ text: `Latencia API: ${interaction.client.ws.ping}ms` })
             .setTimestamp();
-
-        await interaction.reply({ embeds: [statsEmbed] });
+        await interaction.reply({ embeds: [statsEmbed], ephemeral: true });
     },
 };
