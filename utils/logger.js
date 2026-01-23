@@ -7,27 +7,34 @@ const config = require("../config").general;
  * @param {import("discord.js").User} user 
  * @param {string} text 
  */
-async function sendLog(client, user, text, messageToEdit = null) {
-    const channel = await client.channels.fetch(config.logsChannel).catch(() => null);
-    if (!channel) return;
-    const embed = new EmbedBuilder()
-        .setAuthor({ name: user.username, iconURL: user.displayAvatarURL({ dynamic: true }) })
-        .setDescription(text)
-        .setColor(0xf1c40f)
-        .setTimestamp();
+async function sendLog(client, user, text, guildId, messageToEdit = null) {
+    if (!guildId) return;
 
-    if (messageToEdit) {
-        return messageToEdit.edit({ embeds: [embed] }).catch(err => {
-            logError(client, err, "Edit Log");
-            return null;
-        });
+    try {
+        const { getGuildSettings } = require("./dataHandler");
+        const settings = await getGuildSettings(guildId);
+
+        if (!settings || !settings.logsChannel) return;
+
+        const channel = await client.channels.fetch(settings.logsChannel).catch(() => null);
+        if (!channel) return;
+
+        const embed = new EmbedBuilder()
+            .setAuthor({ name: user.username, iconURL: user.displayAvatarURL({ dynamic: true }) })
+            .setDescription(text)
+            .setColor(0xf1c40f)
+            .setTimestamp();
+
+        if (messageToEdit) {
+            return messageToEdit.edit({ embeds: [embed] }).catch(() => null);
+        }
+
+        return channel.send({ embeds: [embed] }).catch(() => null);
+    } catch (err) {
+        console.error("Error en sendLog multiservidor:", err);
     }
-
-    return channel.send({ embeds: [embed] }).catch(err => {
-        logError(client, err, "Send Log");
-        return null;
-    });
 }
+
 
 /**
  * Envia un log de perfil al canal configurado
@@ -36,16 +43,23 @@ async function sendLog(client, user, text, messageToEdit = null) {
  * @param {string} fieldName 
  * @param {string} fieldValue 
  */
-async function sendProfileLog(client, user, fieldName, fieldValue) {
-    const channel = await client.channels.fetch(config.logsChannel).catch(() => null);
+async function sendProfileLog(client, user, fieldName, fieldValue, guildId) {
+    if (!guildId) return;
+    const { getGuildSettings } = require("./dataHandler");
+    const settings = await getGuildSettings(guildId);
+
+    if (!settings || !settings.logsChannel) return;
+
+    const channel = await client.channels.fetch(settings.logsChannel).catch(() => null);
     if (!channel) return;
+
     const embed = new EmbedBuilder()
         .setAuthor({ name: user.username, iconURL: user.displayAvatarURL({ dynamic: true }) })
         .addFields({ name: fieldName, value: fieldValue })
         .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
         .setColor(0xf1c40f)
         .setTimestamp();
-    channel.send({ embeds: [embed] }).catch(err => logError(client, err, "Send Profile Log"));
+    channel.send({ embeds: [embed] }).catch(() => { });
 }
 
 /**

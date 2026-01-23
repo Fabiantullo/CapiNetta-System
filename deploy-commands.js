@@ -72,10 +72,11 @@ function extractClientId(token) {
 }
 
 (async () => {
-    // Deploy General
-    // Nota: Config General original no tenía clientId explícito en config.json, usaremos el extractor.
-    await deployForBot("Bot General", config.general, "bot-general");
+    // 1. Deploy General (Cambiado a GLOBAL para que aparezca en todos los servers)
+    // Pasamos un objeto sin guildId para forzar el registro global
+    const generalGlobalConfig = { ...config.general, guildId: null };
+    await deployForBot("Bot General", generalGlobalConfig, "bot-general");
 
-    // Deploy Whitelist
+    // 2. Deploy Whitelist (Este lo podés dejar por Guild si es solo para tu server)
     await deployForBot("Bot Whitelist", config.whitelist, "bot-whitelist");
 })();
