@@ -1,11 +1,10 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const config = require('../../../config').general;
-const { getUserRoles } = require('../../../utils/dataHandler');
+const { getUserRoles, clearUserRoles } = require('../../../utils/dataHandler');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('unmute')
-        .setDescription('Libera a un usuario y restaura sus roles originales.')
+        .setDescription('Restaura roles y limpia estado de cuarentena en DB.')
         .addUserOption(opt => opt.setName('usuario').setDescription('Usuario').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
     async execute(interaction) {
@@ -13,25 +12,18 @@ module.exports = {
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
         if (!member) return interaction.reply({ content: 'No encontrado.', ephemeral: true });
 
-        // --- NUEVO: RECUPERAR ROLES DE LA DB ---
         const savedRoles = await getUserRoles(user.id);
 
         try {
             if (savedRoles && savedRoles.length > 0) {
-                // Restauramos la lista completa que tenía antes
                 await member.roles.set(savedRoles);
-                console.log(`✅ Roles restaurados para ${user.tag}: ${savedRoles.join(', ')}`);
+                await clearUserRoles(user.id); // Limpieza de persistencia
+                await interaction.reply(`✅ **${user.tag}** liberado y roles restaurados.`);
             } else {
-                // Si no hay nada guardado (caso raro), ponemos el rol de usuario básico
-                await member.roles.set([config.roleUser]);
-                console.log(`⚠️ No se encontraron roles previos para ${user.tag}, usando rol base.`);
+                await interaction.reply({ content: "⚠️ No hay roles guardados para este usuario.", ephemeral: true });
             }
-
-            await user.send("✅ Ya recuperaste tus permisos y roles en **Capi Netta RP**.").catch(() => { });
-            await interaction.reply(`✅ **${user.tag}** fue liberado y sus roles restaurados.`);
         } catch (err) {
-            console.error(err);
-            await interaction.reply({ content: "❌ Error al restaurar roles. Verificá la jerarquía.", ephemeral: true });
+            await interaction.reply({ content: "❌ Error de jerarquía al restaurar roles.", ephemeral: true });
         }
     },
 };
