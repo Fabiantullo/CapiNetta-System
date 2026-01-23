@@ -1,9 +1,16 @@
 const { REST, Routes } = require('discord.js');
-const config = require('./config'); // Unified config
+const config = require('./config'); //
 const fs = require('fs');
 const path = require('path');
 
-async function deployForBot(botName, botConfig, commandsSubDir) {
+/**
+ * Registra los comandos para un bot específico
+ * @param {string} botName Nombre descriptivo del bot
+ * @param {object} botConfig Configuración del bot (token, guildId, etc.)
+ * @param {string} commandsSubDir Carpeta de comandos (bot-general o bot-whitelist)
+ * @param {boolean} isGlobal Si el despliegue debe ser global o por servidor
+ */
+async function deployForBot(botName, botConfig, commandsSubDir, isGlobal = false) {
     const commands = [];
     const foldersPath = path.join(__dirname, 'commands', commandsSubDir);
 
@@ -24,35 +31,28 @@ async function deployForBot(botName, botConfig, commandsSubDir) {
             const command = require(filePath);
             if ('data' in command && 'execute' in command) {
                 commands.push(command.data.toJSON());
-            } else {
-                console.log(`[WARNING] El comando en ${filePath} no tiene "data" o "execute".`);
             }
         }
     }
 
     const rest = new REST().setToken(botConfig.token);
+    const clientId = botConfig.clientId || extractClientId(botConfig.token);
 
     try {
-        console.log(`Iniciando actualización de ${commands.length} comandos de aplicación para [${botName}].`);
-
-        // Usamos applicationCommands para global o applicationGuildCommands si fuera específico de guild (más rápido)
-        // Aquí asumimos global para General y Guild para Whitelist según config original, pero unificaremos a global si tiene clientId
-
-        let route;
-        if (botConfig.guildId) {
-            route = Routes.applicationGuildCommands(botConfig.clientId || extractClientId(botConfig.token), botConfig.guildId);
-        } else {
-            // Si no hay guildId, usamos global (requiere clientId)
-            // Nota: Bot General usaba config.clientId pero no vi el valor en config.json original, asumiré que se necesita.
-            // Si falta clientId en general, esto fallará.
-            // Voy a intentar extraer el ID del token si no está explícito, aunque config.js debería tenerlo.
-            // Revisando config.js: general.clientId NO FUE AGREGADO. ERROR POTENCIAL.
-            // El config.json original NO tenía clientId.
-            // El token base64 decode primera parte es el ID.
-            console.log(`⚠️ [${botName}] No se definio Guild ID, intentando despliegue global (esto puede tardar 1h en actualizarse).`);
-            const clientId = extractClientId(botConfig.token);
-            route = Routes.applicationCommands(clientId);
+        // --- 1. LIMPIEZA AUTOMÁTICA DE DUPLICADOS ---
+        // Si el bot va a ser GLOBAL y tiene un GuildID en la config, borramos primero los comandos locales
+        if (isGlobal && botConfig.guildId) {
+            console.log(`🧹 [${botName}] Detectado Guild ID en config. Limpiando comandos locales para evitar duplicados...`);
+            await rest.put(Routes.applicationGuildCommands(clientId, botConfig.guildId), { body: [] });
+            console.log(`✅ Comandos locales del servidor ${botConfig.guildId} eliminados.`);
         }
+
+        // --- 2. REGISTRO DE COMANDOS ---
+        const route = isGlobal
+            ? Routes.applicationCommands(clientId)
+            : Routes.applicationGuildCommands(clientId, botConfig.guildId);
+
+        console.log(`🚀 Iniciando actualización de ${commands.length} comandos para [${botName}] (${isGlobal ? 'GLOBAL' : 'LOCAL'})...`);
 
         await rest.put(route, { body: commands });
 
@@ -72,11 +72,9 @@ function extractClientId(token) {
 }
 
 (async () => {
-    // 1. Deploy General (Cambiado a GLOBAL para que aparezca en todos los servers)
-    // Pasamos un objeto sin guildId para forzar el registro global
-    const generalGlobalConfig = { ...config.general, guildId: null };
-    await deployForBot("Bot General", generalGlobalConfig, "bot-general");
+    // 1. Bot General: Despliegue GLOBAL (limpia automáticamente el GuildID del config para evitar el bug visual)
+    await deployForBot("Bot General", config.general, "bot-general", true);
 
-    // 2. Deploy Whitelist (Este lo podés dejar por Guild si es solo para tu server)
-    await deployForBot("Bot Whitelist", config.whitelist, "bot-whitelist");
+    // 2. Bot Whitelist: Despliegue LOCAL (Guild) para mayor rapidez en el servidor de Whitelist
+    await deployForBot("Bot Whitelist", config.whitelist, "bot-whitelist", false);
 })();
