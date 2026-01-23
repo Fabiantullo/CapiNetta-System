@@ -17,13 +17,29 @@ module.exports = {
         const isScam = message.mentions.users.size > 10 || checkDuplicate(client, message);
 
         if (isScam) {
-            await message.delete().catch(() => { });
-            await applyScamSanction(
-                client,
-                message,
-                isScam === true ? "Mensajes repetitivos" : "Menciones masivas",
-                settings // Pasamos la configuración dinámica
-            );
+            try {
+                // 1. Buscamos los últimos mensajes en el canal (por ejemplo, los últimos 10)
+                const messages = await message.channel.messages.fetch({ limit: 10 });
+
+                // 2. Filtramos solo los que pertenecen al spammer
+                const spamMessages = messages.filter(m => m.author.id === message.author.id);
+
+                // 3. Los eliminamos todos de un saque
+                await message.channel.bulkDelete(spamMessages).catch(() => {
+                    // Fallback: si falla bulkDelete, borramos al menos el actual
+                    message.delete().catch(() => { });
+                });
+
+                // 4. Aplicamos la sanción (roles y aviso en soporte)
+                await applyScamSanction(
+                    client,
+                    message,
+                    isScam === true ? "Mensajes repetitivos" : "Menciones masivas",
+                    settings
+                );
+            } catch (err) {
+                logError(client, err, "Error limpiando spam", message.guild.id);
+            }
         }
     },
 };
