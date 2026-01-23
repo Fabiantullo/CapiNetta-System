@@ -51,4 +51,30 @@ async function getWarnsFromDB() {
     } catch (e) { return new Map(); }
 }
 
-module.exports = { saveUserRoles, getUserRoles, clearUserRoles, saveWarnToDB, addWarnLog, getWarnsFromDB };
+async function getGuildSettings(guildId) {
+    try {
+        const [rows] = await pool.query('SELECT * FROM guild_settings WHERE guildId = ?', [guildId]);
+        return rows[0] || null;
+    } catch (e) { return null; }
+}
+
+async function updateGuildSettings(guildId, settings) {
+    const { logs, verify, welcome, support, rUser, rNoVerify, rMuted } = settings;
+    const sql = `
+        INSERT INTO guild_settings (guildId, logsChannel, verifyChannel, welcomeChannel, supportChannel, roleUser, roleNoVerify, roleMuted, isSetup)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+        ON DUPLICATE KEY UPDATE 
+        logsChannel=?, verifyChannel=?, welcomeChannel=?, supportChannel=?, roleUser=?, roleNoVerify=?, roleMuted=?, isSetup=TRUE`;
+    await pool.query(sql, [guildId, logs, verify, welcome, support, rUser, rNoVerify, rMuted, logs, verify, welcome, support, rUser, rNoVerify, rMuted]);
+}
+
+module.exports = {
+    getGuildSettings,
+    updateGuildSettings,
+    saveUserRoles,
+    getUserRoles,
+    clearUserRoles,
+    saveWarnToDB,
+    addWarnLog,
+    getWarnsFromDB
+};

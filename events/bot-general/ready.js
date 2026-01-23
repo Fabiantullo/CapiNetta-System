@@ -1,11 +1,28 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const config = require("../../config").general; //
 const { logError } = require("../../utils/logger");
+const { getGuildSettings, updateGuildSettings } = require("../../utils/dataHandler");
 
 module.exports = {
-    name: "clientReady", // Cambiado para que no tire más el "DeprecationWarning"
+    name: "clientReady",
     once: true,
     async execute(client) {
+        const guildId = config.general.guildId; // Tu ID actual de producción
+        const currentSettings = await getGuildSettings(guildId);
+
+        if (!currentSettings) {
+            console.log("🚀 Migrando configuración del .env a la base de datos...");
+            await updateGuildSettings(guildId, {
+                logs: config.general.logsChannel,
+                verify: config.general.verifyChannel,
+                welcome: config.general.welcomeChannel,
+                support: config.general.supportScamChannel,
+                rUser: config.general.roleUser,
+                rNoVerify: config.general.roleNoVerify,
+                rMuted: config.general.roleMuted
+            });
+            console.log("✅ Migración completada para el servidor principal.");
+        }
         console.log(`✅ ${client.user.tag} está online.`);
 
         // --- 1. MENSAJE DE VERIFICACIÓN ---

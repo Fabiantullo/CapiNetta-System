@@ -35,6 +35,21 @@ const initDB = async () => {
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `;
+        const guildSettingsTable = `
+            CREATE TABLE IF NOT EXISTS guild_settings (
+                guildId VARCHAR(25) PRIMARY KEY,
+                logsChannel VARCHAR(25),
+                verifyChannel VARCHAR(25),
+                welcomeChannel VARCHAR(25),
+                supportChannel VARCHAR(25),
+                roleUser VARCHAR(25),
+                roleNoVerify VARCHAR(25),
+                roleMuted VARCHAR(25),
+                isSetup BOOLEAN DEFAULT FALSE
+            )
+        `;
+        await pool.query(guildSettingsTable);
+        console.log("✅ Tabla de configuración de servidores lista.");
 
         await pool.query(warnsTable);
         await pool.query(logsTable);
