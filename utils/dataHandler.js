@@ -59,18 +59,20 @@ async function getGuildSettings(guildId) {
     } catch (e) { return null; }
 }
 
-async function updateGuildSettings(guildId, settings) {
-    const { logs, debug, verify, welcome, support, rUser, rNoVerify, rMuted } = settings;
-    const sql = `
-        INSERT INTO guild_settings (guildId, logsChannel, debugChannel, verifyChannel, welcomeChannel, supportChannel, roleUser, roleNoVerify, roleMuted, isSetup)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
-        ON DUPLICATE KEY UPDATE 
-        logsChannel=?, debugChannel=?, verifyChannel=?, welcomeChannel=?, supportChannel=?, roleUser=?, roleNoVerify=?, roleMuted=?, isSetup=TRUE`;
+async function updateGuildSettings(guildId, data) {
+    const keys = Object.keys(data);
+    if (keys.length === 0) return;
+    const setClause = keys.map(key => `${key} = ?`).join(', ');
+    const values = [...Object.values(data), guildId];
 
-    await pool.query(sql, [
-        guildId, logs, debug, verify, welcome, support, rUser, rNoVerify, rMuted,
-        logs, debug, verify, welcome, support, rUser, rNoVerify, rMuted
-    ]);
+    const sql = `UPDATE guild_settings SET ${setClause} WHERE guildId = ?`;
+
+    try {
+        await pool.query(sql, values);
+    } catch (error) {
+        console.error("Error crítico al actualizar MariaDB:", error);
+        throw error;
+    }
 }
 
 module.exports = {
