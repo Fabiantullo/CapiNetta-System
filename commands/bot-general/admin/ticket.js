@@ -23,6 +23,8 @@ module.exports = {
                 .addChannelOption(opt => opt.setName('categoria_discord').setDescription('Categoría de Discord donde se crearán los canales').addChannelTypes(ChannelType.GuildCategory).setRequired(true))
                 .addStringOption(opt => opt.setName('emoji').setDescription('Emoji representativo (ej: 🔧)').setRequired(true))
                 .addStringOption(opt => opt.setName('descripcion').setDescription('Breve descripción para el menú').setRequired(true))
+                .addRoleOption(opt => opt.setName('rol_extra_1').setDescription('Rol adicional opcional (ej: Admin)').setRequired(false))
+                .addRoleOption(opt => opt.setName('rol_extra_2').setDescription('Otro rol adicional opcional').setRequired(false))
         )
         .addSubcommand(sub =>
             sub.setName('addrole')
@@ -70,20 +72,32 @@ module.exports = {
         if (sub === 'add') {
             const name = interaction.options.getString('nombre');
             const role = interaction.options.getRole('rol');
+            const role2 = interaction.options.getRole('rol_extra_1');
+            const role3 = interaction.options.getRole('rol_extra_2');
             const parentCat = interaction.options.getChannel('categoria_discord');
             const emoji = interaction.options.getString('emoji');
             const desc = interaction.options.getString('descripcion');
+
+            // Lógica de múltiples roles
+            let roleIdsToSave = [role.id];
+            if (role2) roleIdsToSave.push(role2.id);
+            if (role3) roleIdsToSave.push(role3.id);
+
+            // Si hay más de uno, guardamos como JSON String. Si es uno, guardamos ID plano (o JSON, ambos soportados).
+            // Para consistencia futura, si hay >1 usamos Array.
+            const roleIdField = roleIdsToSave.length > 1 ? JSON.stringify(roleIdsToSave) : role.id;
 
             const success = await addTicketCategory(guildId, {
                 name,
                 description: desc,
                 emoji,
-                roleId: role.id, // Se guarda como string inicialmente (o el primer ID si fuésemos a array directo, pero DB espera String)
+                roleId: roleIdField,
                 targetCategoryId: parentCat.id
             });
 
             if (success) {
-                return interaction.reply({ content: `✅ Categoría **${name}** creada con éxito.\n> **Rol:** ${role}\n> **Ubicación:** ${parentCat.name}`, ephemeral: true });
+                const roleNames = roleIdsToSave.map(id => `<@&${id}>`).join(', ');
+                return interaction.reply({ content: `✅ Categoría **${name}** creada con éxito.\n> **Roles:** ${roleNames}\n> **Ubicación:** ${parentCat.name}`, ephemeral: true });
             } else {
                 return interaction.reply({ content: `❌ Hubo un error al guardar la categoría.`, ephemeral: true });
             }
