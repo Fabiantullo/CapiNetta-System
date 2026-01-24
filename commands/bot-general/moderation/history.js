@@ -1,44 +1,51 @@
 /**
  * @file history.js
- * @description Comando de Auditoría. Permite ver el historial de sanciones pasadas de un usuario.
- * Consulta la tabla `warn_logs` en Base de Datos.
+ * @description Muestra el historial de sanciones de un usuario.
  */
 
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { pool } = require('../../../utils/database');
+const { prisma } = require('../../../utils/database');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('history')
-        .setDescription('Muestra el historial de advertencias detallado de un usuario')
-        .addUserOption(opt => opt.setName('usuario').setDescription('El usuario a consultar').setRequired(true))
+        .setDescription('Consulta el historial de advertencias de un usuario')
+        .addUserOption(opt => opt.setName('usuario').setDescription('Usuario a consultar').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
     async execute(interaction) {
-        const user = interaction.options.getUser('usuario');
+        const targetUser = interaction.options.getUser('usuario');
 
-        // Consultamos los últimos 10 incidentes
-        const [logs] = await pool.query(
-            'SELECT * FROM warn_logs WHERE userId = ? ORDER BY timestamp DESC LIMIT 10',
-            [user.id]
-        );
+        try {
+            const history = await prisma.warnLog.findMany({
+                where: { userId: targetUser.id },
+                orderBy: { timestamp: 'desc' },
+                take: 10 // Últimos 10
+            });
 
-        if (logs.length === 0) {
-            return interaction.reply({ content: `✅ **${user.tag}** tiene el expediente limpio (Sin registros en DB).`, flags: [MessageFlags.Ephemeral] });
+            if (history.length === 0) {
+                return interaction.reply({ content: `✅ **${targetUser.tag}** no tiene antecedentes registrados.`, flags: [MessageFlags.Ephemeral] });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`📜 Historial de: ${targetUser.tag}`)
+                .setColor(0xE67E22)
+                .setThumbnail(targetUser.displayAvatarURL())
+                .setFooter({ text: "Mostrando últimos 10 registros" });
+
+            // Mapeamos los resultados de Prisma
+            const description = history.map(log => {
+                const date = log.timestamp.toLocaleDateString(); // Prisma returns Date objects
+                return `**[${date}] Warn #${log.warnNumber}**\n👮 Mod: <@${log.moderatorId}>\n📝 Razón: *${log.reason}*`;
+            }).join('\n\n');
+
+            embed.setDescription(description);
+
+            return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+
+        } catch (error) {
+            console.error("Error fetching history:", error);
+            return interaction.reply({ content: "❌ Error consultando el historial.", flags: [MessageFlags.Ephemeral] });
         }
-
-        // Construcción del Embed con formato de lista
-        const embed = new EmbedBuilder()
-            .setTitle(`📜 Historial de Sanciones: ${user.tag}`)
-            .setColor(0xf1c40f)
-            .setThumbnail(user.displayAvatarURL())
-            .setDescription(
-                logs.map((l, i) =>
-                    `**#${logs.length - i}** | <t:${Math.floor(l.timestamp / 1000)}:R>\n**Mod:** <@${l.moderatorId}>\n**Razón:** ${l.reason}`
-                ).join('\n\n')
-            )
-            .setFooter({ text: `Consultado por ${interaction.user.username} • Mostrando últimos 10` });
-
-        await interaction.reply({ embeds: [embed] });
-    },
+    }
 };

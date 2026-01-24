@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Configuración de Servidores
+model GuildSettings {
+  guildId           String  @id @db.VarChar(25)
+  logsChannel       String? @db.VarChar(25)
+  debugChannel      String? @db.VarChar(25)
+  verifyChannel     String? @db.VarChar(25)
+  welcomeChannel    String? @db.VarChar(25)
+  supportChannel    String? @db.VarChar(25)
+  roleUser          String? @db.VarChar(25)
+  roleNoVerify      String? @db.VarChar(25)
+  roleMuted         String? @db.VarChar(25)
+  ticketLogsChannel String? @db.VarChar(25)
+  isSetup           Boolean @default(false)
+
+  @@map("guild_settings")
+}
+
+// 2. Estado de Usuarios
+model Warn {
+  guildId   String   @db.VarChar(25)
+  userId    String   @db.VarChar(25)
+  count     Int      @default(0)
+  roles     String?  @db.Text
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@id([guildId, userId])
+  @@map("warns")
+}
+
+// 3. Actividad General
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  guildId   String?  @db.VarChar(25)
+  userId    String?  @db.VarChar(25)
+  action    String?  @db.Text
+  timestamp DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+// 3.1 Historial Advertencias
+model WarnLog {
+  id          Int      @id @default(autoincrement())
+  userId      String?  @db.VarChar(25)
+  moderatorId String?  @db.VarChar(25)
+  reason      String?  @db.Text
+  warnNumber  Int?
+  timestamp   DateTime @default(now())
+
+  @@map("warn_logs")
+}
+
+// 4. Fallos Técnicos
+model SystemError {
+  id        Int      @id @default(autoincrement())
+  context   String?  @db.VarChar(100)
+  message   String?  @db.Text
+  stack     String?  @db.Text
+  timestamp DateTime @default(now())
+
+  @@map("system_errors")
+}
+
+// 5. Sistema de Tickets - Categorías
+model TicketCategory {
+  id               Int      @id @default(autoincrement())
+  guildId          String?  @db.VarChar(25)
+  name             String?  @db.VarChar(100)
+  description      String?  @db.VarChar(255)
+  emoji            String?  @db.VarChar(50)
+  roleId           String?  @db.Text
+  targetCategoryId String?  @db.VarChar(25)
+  created_at       DateTime @default(now())
+
+  @@map("ticket_categories")
+}
+
+// 6. Sistema de Tickets - Tickets Activos
+model Ticket {
+  ticketId     Int      @id @default(autoincrement())
+  guildId      String?  @db.VarChar(25)
+  userId       String?  @db.VarChar(25)
+  channelId    String?  @db.VarChar(25)
+  status       String?  @default("open") @db.VarChar(20)
+  type         String?  @db.VarChar(100)
+  claimedBy    String?  @db.VarChar(25)
+  lastActivity DateTime @default(now())
+  created_at   DateTime @default(now())
+
+  @@map("tickets")
+}
+
+// 7. Sistema de Tickets - Logs de Acciones
+model TicketAction {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int?
+  action     String?  @db.VarChar(50)
+  executorId String?  @db.VarChar(25)
+  targetId   String?  @db.VarChar(25)
+  timestamp  DateTime @default(now())
+
+  @@map("ticket_actions")
+}

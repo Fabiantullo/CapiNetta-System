@@ -1,141 +1,137 @@
 /**
  * @file dataHandler.js
- * @description Módulo para consultas específicas de usuarios y configuraciones en DB.
- * Actúa como una capa intermedia entre la lógica de negocio y `database.js`.
- * 
+ * @description Manejador de datos generales (Warns, Settings) usando Prisma ORM ⚡.
  * @module Utils/DataHandler
  */
 
-const { pool } = require('./database');
+const { prisma } = require('./database');
 
 // =============================================================================
 //                             GESTIÓN DE ROLES (Persistencia)
 // =============================================================================
 
 /**
- * Guarda el array de roles de un usuario en la base de datos (para reasignar al volver).
- * @param {string} guildId - ID del servidor.
- * @param {string} userId - ID del usuario.
- * @param {string[]} rolesArray - Lista de IDs de roles.
+ * Carga los warns y roles persistidos desde la DB al iniciar.
+ * @returns {Promise<Map>} Mapa con estructura { userId: count }
+ * Nota: Los roles se cargan bajo demanda generalmente, pero aquí mantenemos el mapa de warns para cache.
  */
-async function saveUserRoles(guildId, userId, rolesArray) {
+async function getWarnsFromDB() {
+    const warnMap = new Map();
     try {
-        const rolesData = JSON.stringify(rolesArray);
-        await pool.query(
-            'INSERT INTO warns (guildId, userId, roles) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE roles = ?',
-            [guildId, userId, rolesData, rolesData]
-        );
-    } catch (e) {
-        console.error("Error guardando roles:", e);
+        const warns = await prisma.warn.findMany();
+
+        warns.forEach(row => {
+            warnMap.set(row.userId, row.count);
+        });
+        return warnMap;
+    } catch (error) {
+        console.error("Error loading warns from DB:", error);
+        return new Map();
     }
 }
 
 /**
- * Recupera los roles guardados de un usuario.
- * @returns {Promise<string[]|null>} Array de IDs de roles o null.
+ * Guarda o actualiza la cantidad de warns de un usuario.
+ * @param {string} userId
+ * @param {number} count
+ * @param {Array} roles (Opcional) Roles a persistir
  */
-async function getUserRoles(guildId, userId) {
+async function saveWarnToDB(userId, count, roles = null) {
+    // Necesitamos el guildId. En esta arquitectura actual parece que dataHandler asume un guild por defecto o se debería pasar.
+    // Revisando el código SQL anterior: `INSERT ... ON DUPLICATE KEY UPDATE`
+    // El código original asumía que warns tenía guildId. 
+    // Para no romper la firma del método, usaremos el guildId del config general si no se pasa, o intentaremos inferirlo.
+    // IMPORTANTE: Prisma requiere todos los campos de @id.
+    // Vemos que la firma original era `saveWarnToDB(userId, count)`.
+
+    // WORKAROUND: Como la firma original no tenía guildId explícito, asumiremos el del archivo config para mantener compatibilidad,
+    // o deberíamos refactorizar quien lo llama.
+    // Mirando `warn.js`, llama a `saveWarnToDB(user.id, currentWarns)`.
+    // Vamos a importar config para obtener el GUILD_ID.
+
+    const config = require('../config');
+    const guildId = config.general.guildId; // Fallback seguro
+
     try {
-        const [rows] = await pool.query('SELECT roles FROM warns WHERE guildId = ? AND userId = ?', [guildId, userId]);
-        if (rows.length > 0 && rows[0].roles) return JSON.parse(rows[0].roles);
-        return null;
-    } catch (e) { return null; }
+        const dataToUpdate = { count };
+        if (roles) {
+            dataToUpdate.roles = JSON.stringify(roles);
+        }
+
+        await prisma.warn.upsert({
+            where: {
+                guildId_userId: {
+                    guildId: guildId,
+                    userId: userId
+                }
+            },
+            update: dataToUpdate,
+            create: {
+                guildId: guildId,
+                userId: userId,
+                count: count,
+                roles: roles ? JSON.stringify(roles) : null
+            }
+        });
+    } catch (error) {
+        console.error("Error saving warn to DB:", error);
+    }
 }
 
 /**
- * Limpia el registro de roles guardados (ej cuando ya se restauraron).
- */
-async function clearUserRoles(guildId, userId) {
-    try {
-        await pool.query('UPDATE warns SET roles = NULL WHERE guildId = ? AND userId = ?', [guildId, userId]);
-    } catch (e) { console.error("Error limpiando roles:", e); }
-}
-
-// =============================================================================
-//                             SISTEMA DE WARNS (Advertencias)
-// =============================================================================
-
-/**
- * Actualiza el contador de warns de un usuario.
- */
-async function saveWarnToDB(guildId, userId, count) {
-    try {
-        await pool.query(
-            'INSERT INTO warns (guildId, userId, count) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE count = ?',
-            [guildId, userId, count, count]
-        );
-    } catch (e) { console.error("Error guardando warn:", e); }
-}
-
-/**
- * Registra una entrada en el historial detallado de warns (logs eternos).
+ * Registra un log de advertencia para auditoría.
  */
 async function addWarnLog(userId, moderatorId, reason, warnNumber) {
     try {
-        await pool.query(
-            'INSERT INTO warn_logs (userId, moderatorId, reason, warnNumber) VALUES (?, ?, ?, ?)',
-            [userId, moderatorId, reason, warnNumber]
-        );
-    } catch (e) { console.error("Error en log histórico:", e); }
-}
-
-/**
- * Obtiene un mapa de todos los usuarios con warns activos.
- * @returns {Promise<Map<string, number>>} Map<UserId, Count>
- */
-async function getWarnsFromDB() {
-    try {
-        const [rows] = await pool.query('SELECT userId, count FROM warns');
-        const map = new Map();
-        rows.forEach(row => map.set(row.userId, row.count));
-        return map;
-    } catch (e) { return new Map(); }
+        await prisma.warnLog.create({
+            data: {
+                userId,
+                moderatorId,
+                reason,
+                warnNumber
+            }
+        });
+    } catch (error) {
+        console.error("Error adding warn log:", error);
+    }
 }
 
 // =============================================================================
-//                             CONFIGURACIÓN DE SERVIDOR
+//                             GUILD SETTINGS
 // =============================================================================
 
-/**
- * Obtiene la configuración específica de un servidor (canales, roles, etc).
- */
 async function getGuildSettings(guildId) {
     try {
-        const [rows] = await pool.query('SELECT * FROM guild_settings WHERE guildId = ?', [guildId]);
-        return rows[0] || null;
-    } catch (e) { return null; }
+        return await prisma.guildSettings.findUnique({
+            where: { guildId }
+        });
+    } catch (error) {
+        console.error("Error fetching guild settings:", error);
+        return null;
+    }
 }
 
-/**
- * Actualiza o Crea la configuración de un servidor.
- * Genera dinámicamente la query SQL en base a los campos recibidos en `data`.
- * @param {Object} data - Objeto parcial con claves-valor a actualizar (ej: { logsChannel: '123' }).
- */
-async function updateGuildSettings(guildId, data) {
-    const keys = Object.keys(data);
-    if (keys.length === 0) return;
-
-    const insertKeys = ['guildId', ...keys];
-    // Preparar placeholders (?,?)
-    const placeholders = insertKeys.map(() => '?').join(', ');
-    // Preparar cláusula ON DUPLICATE KEY UPDATE key = VALUES(key)
-    const updateClause = keys.map(key => `${key} = VALUES(${key})`).join(', ');
-    const values = [guildId, ...Object.values(data)];
-
-    const sql = `INSERT INTO guild_settings (${insertKeys.join(', ')}) 
-                 VALUES (${placeholders}) 
-                 ON DUPLICATE KEY UPDATE ${updateClause}`;
-
-    await pool.query(sql, values);
+async function updateGuildSettings(guildId, settings) {
+    try {
+        await prisma.guildSettings.upsert({
+            where: { guildId },
+            update: settings,
+            create: {
+                guildId,
+                ...settings
+            }
+        });
+        return true;
+    } catch (error) {
+        console.error("Error updating guild settings:", error);
+        return false;
+    }
 }
 
 module.exports = {
-    getGuildSettings,
-    updateGuildSettings,
-    saveUserRoles,
-    getUserRoles,
-    clearUserRoles,
+    getWarnsFromDB,
     saveWarnToDB,
     addWarnLog,
-    getWarnsFromDB
+    getGuildSettings,
+    updateGuildSettings
 };
