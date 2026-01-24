@@ -206,7 +206,7 @@ module.exports = {
             const categories = await getTicketCategories(guildId);
             if (categories.length === 0) return interaction.reply({ content: "⚠️ No hay categorías configuradas.", ephemeral: true });
 
-            const list = categories.map(c => {
+            const list = await Promise.all(categories.map(async c => {
                 // Parseo visual de roles (puede ser ID o Array JSON)
                 let rolesDisplay = c.roleId;
                 if (c.roleId.startsWith('[')) {
@@ -217,8 +217,19 @@ module.exports = {
                 } else {
                     rolesDisplay = `<@&${c.roleId}>`;
                 }
-                return `**${c.name}** ${c.emoji}\n> Roles: ${rolesDisplay}\n> Destino: <#${c.targetCategoryId}>`;
-            }).join('\n\n');
+
+                // Intentamos buscar el nombre real de la categoría para que no se vea feo como mención <#ID>
+                const channel = await interaction.guild.channels.fetch(c.targetCategoryId).catch(() => null);
+                const categoryName = channel ? channel.name : `Desconocida (${c.targetCategoryId})`;
+
+                return `**${c.name}** ${c.emoji}\n> 📝 *${c.description}*\n> 🛡️ **Roles:** ${rolesDisplay}\n> 📂 **Destino:** \`${categoryName}\``;
+            }));
+
+            const embed = new EmbedBuilder()
+                .setTitle("📂 Categorías de Tickets")
+                .setDescription(list.join('\n\n'))
+                .setColor(0x3498db);
+            return interaction.reply({ embeds: [embed], ephemeral: true });
 
             const embed = new EmbedBuilder().setTitle("📂 Categorías de Tickets").setDescription(list).setColor(0x3498db);
             return interaction.reply({ embeds: [embed], ephemeral: true });
