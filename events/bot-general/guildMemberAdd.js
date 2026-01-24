@@ -1,55 +1,65 @@
-const { sendLog, logError } = require("../../utils/logger");
-const { getUserRoles, getGuildSettings } = require("../../utils/dataHandler");
-
-const MIN_ACCOUNT_AGE = 7 * 24 * 60 * 60 * 1000;
+const { AttachmentBuilder } = require('discord.js');
+const { createCanvas, loadImage, registerFont } = require('canvas');
+const path = require('path');
+const { getGuildSettings } = require("../../utils/dataHandler");
 
 module.exports = {
     name: "guildMemberAdd",
     async execute(client, member) {
         const guildId = member.guild.id;
-        const accountAge = Date.now() - member.user.createdTimestamp;
-
-        // 1. Obtener la configuración dinámica de la DB
         const settings = await getGuildSettings(guildId);
-        if (!settings || !settings.isSetup) return; // Si no hay /setup, no hace nada
+        if (!settings || !settings.welcomeChannel) return;
 
-        // 2. Anti-Bot: Cuentas nuevas
-        if (accountAge < MIN_ACCOUNT_AGE) {
-            await member.send("🚫 Tu cuenta es demasiado nueva para este servidor.").catch(() => { });
-            await member.kick("Cuenta muy nueva (Anti-Bot)").catch(err => logError(client, err, "AntiBot Kick", guildId));
-            return;
-        }
+        // 1. Crear el lienzo (proporción 16:9 ideal para Discord)
+        const canvas = createCanvas(1024, 500);
+        const ctx = canvas.getContext('2d');
 
-        // 3. Verificación de Cuarentena Persistente
-        const savedRoles = await getUserRoles(member.id);
-        if (savedRoles && savedRoles.length > 0) {
-            const roleMuted = settings.roleMuted;
-            if (roleMuted) {
-                await member.roles.add(roleMuted).catch(err => logError(client, err, "Re-apply Mute", guildId));
+        try {
+            // 2. Cargar y dibujar el fondo (tu imagen hero-bg.png)
+            const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
+            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-                const sChannel = await client.channels.fetch(settings.supportChannel).catch(() => null);
-                if (sChannel) sChannel.send(`🚨 **<@${member.id}>** reingresó intentando evadir aislamiento. Se re-aplicó el mute.`);
+            // 3. Añadir un filtro oscuro para que resalte el texto
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                sendLog(client, member.user, `🛡️ **PERSISTENCIA**: ${member.user.tag} devuelto a cuarentena por reingreso.`, guildId);
-                return;
-            }
-        }
+            // 4. Dibujar el Avatar circular
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(200, 250, 120, 0, Math.PI * 2, true);
+            ctx.closePath();
+            ctx.clip();
 
-        // 4. Flujo Normal: Asignar Rol No Verificado
-        const roleNoVerify = settings.roleNoVerify;
-        if (roleNoVerify) {
-            await member.roles.add(roleNoVerify).catch(err => logError(client, err, "Add Role NoVerify", guildId));
-        }
+            const avatar = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
+            ctx.drawImage(avatar, 80, 130, 240, 240);
+            ctx.restore();
 
-        // 5. Bienvenida
-        const welcomeChannel = settings.welcomeChannel;
-        if (welcomeChannel) {
-            const channel = await member.guild.channels.fetch(welcomeChannel).catch(() => null);
+            // 5. Escribir el Texto
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '60px sans-serif'; // Podés registrar una fuente tipo GTA si querés
+            ctx.fillText('¡BIENVENIDO/A!', 380, 220);
+
+            ctx.fillStyle = '#3498db'; // El celeste de Capi Netta
+            ctx.font = '80px sans-serif';
+            ctx.fillText(member.user.username.toUpperCase(), 380, 310);
+
+            ctx.fillStyle = '#cccccc';
+            ctx.font = '30px sans-serif';
+            ctx.fillText(`Miembro #${member.guild.memberCount}`, 380, 370);
+
+            // 6. Enviar la imagen
+            const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'welcome.png' });
+            const channel = await member.guild.channels.fetch(settings.welcomeChannel);
+
             if (channel) {
-                channel.send(`Hola <@${member.id}>, bienvenido a **${member.guild.name}**`).catch(() => { });
+                await channel.send({
+                    content: `Hola <@${member.id}>, ¡bienvenido a la familia de **${member.guild.name}**! 🚀`,
+                    files: [attachment]
+                });
             }
-        }
 
-        sendLog(client, member.user, `📥 **${member.user.tag}** entró al servidor`, guildId);
+        } catch (err) {
+            console.error("Error generando imagen de bienvenida:", err);
+        }
     },
 };
