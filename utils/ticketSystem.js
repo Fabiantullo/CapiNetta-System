@@ -128,7 +128,7 @@ async function CreateTicket(interaction, categoryName) {
             new ButtonBuilder().setCustomId('close_ticket').setLabel('Cerrar Ticket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
         );
 
-        await ticketChannel.send({ content: `<@${interaction.user.id}> | ${rolesMentions}`, embeds: [embed], components: [row] });
+        await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [row] });
 
         await interaction.editReply({ content: `✅ Ticket creado correctamente: ${ticketChannel}` });
 
