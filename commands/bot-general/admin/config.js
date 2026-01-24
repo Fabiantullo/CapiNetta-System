@@ -9,7 +9,7 @@ const { getGuildSettings, updateGuildSettings } = require('../../../utils/dataHa
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('config')
-        .setDescription('Panel Maestro Integral: Gestión total de Capi Netta RP')
+        .setDescription('Dashboard Maestro: Gestión total de Capi Netta RP')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -24,26 +24,9 @@ module.exports = {
                 .setColor(s?.isSetup ? 0x2ecc71 : 0xf1c40f)
                 .setThumbnail(guild.iconURL({ dynamic: true }))
                 .addFields(
-                    {
-                        name: '📡 Canales de Sistema', value: [
-                            `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}`,
-                            `> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}`,
-                            `> **Verificación:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`
-                        ].join('\n'), inline: true
-                    },
-                    {
-                        name: '🎭 Gestión de Roles', value: [
-                            `> **Usuario:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}`,
-                            `> **Sin Verificar:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}`,
-                            `> **Muteado:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`
-                        ].join('\n'), inline: true
-                    },
-                    {
-                        name: '🚀 Módulos Especializados', value: [
-                            `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *Desactivado*'}`,
-                            `**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *Desactivado*'}`
-                        ].join('\n'), inline: false
-                    }
+                    { name: '📡 Canales de Sistema', value: `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}\n> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}\n> **Verificación:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`, inline: true },
+                    { name: '🎭 Gestión de Roles', value: `> **Usuario:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}\n> **Sin Verificar:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}\n> **Muteado:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`, inline: true },
+                    { name: '🚀 Módulos Especializados', value: `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *OFF*'}\n**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *OFF*'}`, inline: false }
                 )
                 .setFooter({ text: "Capi Netta System • Gestión de Alta Eficiencia" });
 
@@ -67,11 +50,8 @@ module.exports = {
         const collector = response.createMessageComponentCollector({ time: 600000 });
 
         collector.on('collect', async i => {
-            // FIX CERRAR: Borra el efímero o lo limpia si falla
             if (i.customId === 'close_panel') {
-                try { await interaction.deleteReply(); }
-                catch (e) { await interaction.editReply({ content: 'Panel cerrado.', embeds: [], components: [] }); }
-                return;
+                return i.update({ content: '🔒 Panel cerrado correctamente.', embeds: [], components: [] });
             }
 
             if (i.customId === 'refresh') return i.update(await renderFullPanel());
@@ -103,13 +83,14 @@ module.exports = {
 
             if (i.customId === 'save') {
                 await i.update({ content: `💾 Guardando en MariaDB...`, components: [] });
-
-                // GUARDADO QUIRÚRGICO: Solo toca el campo elegido
-                await updateGuildSettings(guild.id, { [selectedField]: i.values[0] });
-
-                setTimeout(async () => {
-                    await interaction.editReply(await renderFullPanel());
-                }, 1000);
+                try {
+                    await updateGuildSettings(guild.id, { [selectedField]: i.values[0] });
+                    setTimeout(async () => {
+                        await interaction.editReply(await renderFullPanel());
+                    }, 1000);
+                } catch (err) {
+                    await interaction.editReply({ content: "❌ Error al guardar. Revisá la consola." });
+                }
             }
         });
     },

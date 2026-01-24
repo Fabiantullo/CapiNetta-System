@@ -23,11 +23,11 @@ module.exports = {
     async execute(interaction) {
         const guild = interaction.guild;
 
-        // Objeto temporal para guardar la config mientras avanza el wizard
         let config = {
-            logs: null, verify: null, debug: null,
-            rUser: null, rNoVerify: null, rMuted: null,
-            welcome: null, support: null
+            logsChannel: null, verifyChannel: null, debugChannel: null,
+            roleUser: null, roleNoVerify: null, roleMuted: null,
+            welcomeChannel: null, supportChannel: null,
+            isSetup: 1
         };
 
         let step = 1;

@@ -60,22 +60,28 @@ async function getGuildSettings(guildId) {
 }
 
 async function updateGuildSettings(guildId, data) {
+    // 1. Filtramos valores basura
     const cleanData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
     );
-
     const keys = Object.keys(cleanData);
     if (keys.length === 0) return;
 
-    const setClause = keys.map(key => `${key} = ?`).join(', ');
-    const values = [...Object.values(cleanData), guildId];
+    // 2. Lógica de "INSERT ... ON DUPLICATE KEY UPDATE"
+    // Esto asegura que si cambias un solo campo, los demás se queden como están.
+    const insertKeys = ['guildId', ...keys];
+    const placeholders = insertKeys.map(() => '?').join(', ');
+    const updateClause = keys.map(key => `${key} = VALUES(${key})`).join(', ');
+    const values = [guildId, ...Object.values(cleanData)];
 
-    const sql = `UPDATE guild_settings SET ${setClause} WHERE guildId = ?`;
+    const sql = `INSERT INTO guild_settings (${insertKeys.join(', ')}) 
+                 VALUES (${placeholders}) 
+                 ON DUPLICATE KEY UPDATE ${updateClause}`;
 
     try {
         await pool.query(sql, values);
     } catch (err) {
-        console.error("Error crítico en MariaDB Update:", err);
+        console.error("❌ Error crítico en MariaDB Upsert:", err);
         throw err;
     }
 }
