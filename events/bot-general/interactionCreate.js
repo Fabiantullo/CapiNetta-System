@@ -8,10 +8,10 @@ module.exports = {
     name: "interactionCreate",
     async execute(client, interaction) {
         // 0. Manejo de Tickets (Botones y Menús)
-        if (interaction.isButton() || interaction.isStringSelectMenu()) {
+        if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()) {
             if (interaction.customId.startsWith('ticket_') ||
                 interaction.customId.startsWith('create_ticket_') ||
-                ['close_ticket', 'confirm_close', 'cancel_close'].includes(interaction.customId)) {
+                ['claim_ticket', 'transfer_ticket', 'confirm_transfer_select', 'close_ticket', 'confirm_close', 'cancel_close'].includes(interaction.customId)) {
 
                 // Mapeo para el Select Menu
                 if (interaction.customId === 'ticket_category_select') {
