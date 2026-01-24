@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, Partials } = require("discord.js");
 const config = require("./config");
+const { prisma } = require("./utils/database");
 const { getWarnsFromDB } = require("./utils/dataHandler");
-const { initDB } = require("./utils/database");
 
 const clientGeneral = new Client({
   intents: [
@@ -32,8 +32,7 @@ process.on('uncaughtException', error => console.error('❌ Uncaught Exception:'
 
 (async () => {
   try {
-    await initDB();
-    clientGeneral.warnMap = await getWarnsFromDB();
+    asdawait prisma.$connect();
     console.log("✅ [General] Warns cargados desde MariaDB.");
 
     await clientGeneral.login(config.general.token);
