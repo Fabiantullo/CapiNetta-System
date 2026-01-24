@@ -3,63 +3,73 @@ const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
 const { getGuildSettings } = require("../../utils/dataHandler");
 
+registerFont(path.join(__dirname, '../../assets/fonts/pricedown.otf'), { family: 'GTA' });
+
 module.exports = {
     name: "guildMemberAdd",
     async execute(client, member) {
-        const guildId = member.guild.id;
-        const settings = await getGuildSettings(guildId);
+        const settings = await getGuildSettings(member.guild.id);
         if (!settings || !settings.welcomeChannel) return;
 
-        // 1. Crear el lienzo (proporción 16:9 ideal para Discord)
-        const canvas = createCanvas(1024, 500);
+        const canvas = createCanvas(1024, 450);
         const ctx = canvas.getContext('2d');
 
         try {
-            // 2. Cargar y dibujar el fondo (tu imagen hero-bg.png)
+            // 1. Fondo con ajuste de proporción
             const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
             ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-            // 3. Añadir un filtro oscuro para que resalte el texto
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            // 2. Capa de oscurecimiento degradada (de izquierda a derecha)
+            const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
+            gradient.addColorStop(0, 'rgba(0,0,0,0.8)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0.1)');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 4. Dibujar el Avatar circular
+            // 3. Avatar con borde de neón
             ctx.save();
             ctx.beginPath();
-            ctx.arc(200, 250, 120, 0, Math.PI * 2, true);
-            ctx.closePath();
+            ctx.arc(200, 225, 130, 0, Math.PI * 2, true);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#3498db'; // Azul Capi Netta
+            ctx.stroke();
             ctx.clip();
-
-            const avatar = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
-            ctx.drawImage(avatar, 80, 130, 240, 240);
+            const avatar = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 512 }));
+            ctx.drawImage(avatar, 70, 95, 260, 260);
             ctx.restore();
 
-            // 5. Escribir el Texto
+            // 4. Configuración de texto con Sombra
+            ctx.shadowColor = "black";
+            ctx.shadowBlur = 10;
             ctx.fillStyle = '#ffffff';
-            ctx.font = '60px sans-serif'; // Podés registrar una fuente tipo GTA si querés
-            ctx.fillText('¡BIENVENIDO/A!', 380, 220);
+            ctx.textAlign = "left";
 
-            ctx.fillStyle = '#3498db'; // El celeste de Capi Netta
-            ctx.font = '80px sans-serif';
-            ctx.fillText(member.user.username.toUpperCase(), 380, 310);
+            // Título
+            ctx.font = '40px "GTA"';
+            ctx.fillText('¡BIENVENIDO/A A LA CIUDAD!', 380, 180);
 
-            ctx.fillStyle = '#cccccc';
-            ctx.font = '30px sans-serif';
-            ctx.fillText(`Miembro #${member.guild.memberCount}`, 380, 370);
+            // Nombre de Usuario (En azul neón)
+            ctx.fillStyle = '#3498db';
+            ctx.font = '90px "GTA"';
+            ctx.fillText(member.user.username.toUpperCase(), 380, 270);
 
-            // 6. Enviar la imagen
-            const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'welcome.png' });
+            // Contador de Miembros
+            ctx.fillStyle = '#aaaaaa';
+            ctx.font = '28px "GTA"';
+            ctx.fillText(`Sos nuestro ciudadano número #${member.guild.memberCount}`, 380, 330);
+
+            // 5. Envío
+            const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'bienvenida-capi.png' });
             const channel = await member.guild.channels.fetch(settings.welcomeChannel);
-
             if (channel) {
                 await channel.send({
-                    content: `Hola <@${member.id}>, ¡bienvenido a la familia de **${member.guild.name}**! 🚀`,
+                    content: `🎉 **${member.user.username}**, ¡ya sos parte de la familia de **${member.guild.name}**!`,
                     files: [attachment]
                 });
             }
 
         } catch (err) {
-            console.error("Error generando imagen de bienvenida:", err);
+            console.error("Fallo en Canvas:", err);
         }
     },
 };
