@@ -221,6 +221,49 @@ async function getTicketByChannel(channelId) {
     }
 }
 
+/**
+ * Obtiene métricas del sistema de tickets para el dashboard.
+ */
+async function getTicketMetrics(guildId) {
+    try {
+        // 1. Tiempo Promedio de Resolución (en Minutos)
+        // Se calcula uniendo tickets con su acción de 'CLOSE'
+        const [avgTimeRows] = await pool.query(`
+            SELECT AVG(TIMESTAMPDIFF(MINUTE, t.created_at, ta.timestamp)) as avg_minutes 
+            FROM tickets t 
+            JOIN ticket_actions ta ON t.ticketId = ta.ticketId 
+            WHERE t.guildId = ? AND ta.action = 'CLOSE'
+        `, [guildId]);
+
+        // 2. Tickets por Categoría
+        const [catRows] = await pool.query(`
+            SELECT type, COUNT(*) as count 
+            FROM tickets 
+            WHERE guildId = ? 
+            GROUP BY type
+        `, [guildId]);
+
+        // 3. Tickets por Staff (Top 5)
+        const [staffRows] = await pool.query(`
+            SELECT claimedBy, COUNT(*) as count 
+            FROM tickets 
+            WHERE guildId = ? AND claimedBy IS NOT NULL 
+            GROUP BY claimedBy 
+            ORDER BY count DESC 
+            LIMIT 5
+        `, [guildId]);
+
+        return {
+            avgResolutionTime: Math.round(avgTimeRows[0]?.avg_minutes || 0),
+            ticketsByCategory: catRows,
+            ticketsByStaff: staffRows
+        };
+    } catch (e) {
+        console.error("Error fetching ticket metrics:", e);
+        return null;
+    }
+}
+
 module.exports = {
     addTicketCategory,
     removeTicketCategory,
@@ -233,5 +276,6 @@ module.exports = {
     assignTicket,
     logTicketActionDB,
     closeTicketDB,
-    getTicketByChannel
+    getTicketByChannel,
+    getTicketMetrics
 };

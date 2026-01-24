@@ -5,7 +5,7 @@
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, AttachmentBuilder, MessageFlags } = require('discord.js');
-const { addTicketCategory, removeTicketCategory, getTicketCategories, addRoleToCategory, updateTicketCategory } = require('../../../utils/ticketDB');
+const { addTicketCategory, removeTicketCategory, getTicketCategories, addRoleToCategory, updateTicketCategory, getTicketMetrics } = require('../../../utils/ticketDB');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -52,6 +52,10 @@ module.exports = {
         .addSubcommand(sub =>
             sub.setName('list')
                 .setDescription('Listar todas las categorías configuradas')
+        )
+        .addSubcommand(sub =>
+            sub.setName('metrics')
+                .setDescription('Muestra estadísticas de rendimiento del sistema de tickets')
         )
         .addSubcommand(sub =>
             sub.setName('panel')
@@ -284,6 +288,43 @@ module.exports = {
 
             await interaction.channel.send({ embeds: [embed], components: rows, files: [file] });
             return interaction.reply({ content: "✅ Panel (Modo Botones) enviado.", flags: [MessageFlags.Ephemeral] });
+        }
+
+        // 7. MÉTRICAS (KPIs)
+        if (sub === 'metrics') {
+            const metrics = await getTicketMetrics(guildId);
+
+            if (!metrics) {
+                return interaction.reply({ content: "❌ Error obteniendo métricas.", flags: [MessageFlags.Ephemeral] });
+            }
+
+            // Formatear Tiempo
+            const hours = Math.floor(metrics.avgResolutionTime / 60);
+            const minutes = metrics.avgResolutionTime % 60;
+            const timeString = `${hours}h ${minutes}m`;
+
+            // Top Staff
+            const staffGraph = metrics.ticketsByStaff.length > 0
+                ? metrics.ticketsByStaff.map((s, i) => `${['🥇', '🥈', '🥉'][i] || '🏅'} <@${s.claimedBy}>: **${s.count}** tickets`).join('\n')
+                : "Sin datos de Staff.";
+
+            // Categorías
+            const catGraph = metrics.ticketsByCategory.length > 0
+                ? metrics.ticketsByCategory.map(c => `**${c.type}**: ${c.count}`).join('\n')
+                : "Sin tickets creados.";
+
+            const embed = new EmbedBuilder()
+                .setTitle("📊 Rendimiento de Soporte | Tickets KPIs")
+                .setColor(0x9b59b6)
+                .addFields(
+                    { name: "⏱️ Tiempo Promedio Resolución", value: `\`${timeString}\``, inline: true },
+                    { name: "📂 Volumen por Categoría", value: catGraph, inline: true },
+                    { name: "🏆 Top Staff (Tickets Resueltos)", value: staffGraph, inline: false }
+                )
+                .setFooter({ text: "Capi Netta Analytics" })
+                .setTimestamp();
+
+            return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
     }
 };

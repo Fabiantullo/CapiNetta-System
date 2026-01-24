@@ -18,6 +18,8 @@ Este repositorio contiene un sistema integral de gestión para servidores de Dis
 ### 📊 Monitoreo y Utilidad
 * **Estado del Servidor**: Comando `/stats` que muestra en tiempo real el uso de RAM, carga de CPU (Oracle Cloud), uptime, almacenamiento en disco y latencia de la DB.
 * **Logs Detallados**: Sistema de auditoría multiservidor que registra mensajes editados/eliminados, cambios de roles con debounce, ingresos/egresos y actividad en voz.
+* **KPIs de Soporte**: Comando `/ticket metrics` que visualiza el tiempo promedio de resolución, volumen de tickets por categoría y ranking de productividad del Staff.
+* **Transcripts Automáticos**: Al cerrar un ticket, el bot genera un archivo `.txt` con el historial completo de la conversación y lo envía por MD al usuario.
 
 ---
 
@@ -41,21 +43,34 @@ Este repositorio contiene un sistema integral de gestión para servidores de Dis
 
 ## 📜 Comandos Disponibles
 
-| Comando | Descripción | Permisos Requeridos |
-| :--- | :--- | :--- |
-| `/setup` | Configuración total de canales y roles por servidor. | Administrador |
-| `/config` | Muestra el mapeo actual de canales y roles del servidor. | Administrador |
-| `/stats` | Salud técnica, CPU, RAM y servidores activos. | Administrador |
-| `/set-verify` | Envía el embed con el botón de verificación. | Administrador |
-| `/set-support` | Envía y fija instrucciones en el canal de soporte. | Administrador |
-| `/warn` | Advierte a un usuario (Auto-timeout en 3/3). | Moderador |
-| `/unmute` | Libera a un usuario y restaura sus roles desde la DB. | Moderador |
-| `/history` | Muestra el historial de sanciones del usuario. | Moderador |
-| `/clear` | Borra mensajes masivos de un canal (Purge). | Moderador |
-| `/db-tables` | Resumen de registros actuales en MariaDB. | Administrador |
-| `/ping` | Test de respuesta del sistema. | Todos |
-| `/aprobar` | Aprueba la whitelist de un usuario. | Staff |
-| `/rechazar` | Rechaza la whitelist de un usuario. | Staff |
+| Comando | Subcomando | Descripción | Permisos |
+| :--- | :--- | :--- | :--- |
+| **🏆 Gestión** | | | |
+| `/setup` | - | Configuración inicial (Wizard) de canales y roles. | Admin |
+| `/config` | - | Dashboard interactivo par ver y editar la configuración. | Admin |
+| `/ticket` | `panel` | Envía el panel de creación de tickets al canal. | Admin |
+| | `add` | Crea una nueva categoría de soporte. | Admin |
+| | `remove` | Elimina una categoría existente. | Admin |
+| | `edit` | Modifica una categoría (Nombre, Emoji, Rol, etc). | Admin |
+| | `list` | Muestra todas las categorías activas. | Admin |
+| | `metrics` | KPIs: Tiempo resolución, Top Staff y Volúmenes. | Admin |
+| `/set-verify` | - | Envía el panel con botón de verificación. | Admin |
+| `/set-support`| - | Fija mensaje informativo de soporte/normativa. | Admin |
+| `/set-debug` | - | Redirige el canal de logs de error rápidamente. | Admin |
+| `/db-tables` | - | Diagnóstico: Conteo de filas en MariaDB. | Admin |
+| **⚖️ Moderación** | | | |
+| `/warn` | - | Advierte a un usuario (Auto-timeout al 3º warn). | Mod |
+| `/unmute` | - | Levanta sanción y restaura roles (Backup DB). | Mod |
+| `/kick` | - | Expulsa a un miembro y registra la razón. | Kick |
+| `/history` | - | Historial completo de sanciones de un usuario. | Mod |
+| `/clear` | - | Borrado masivo de mensajes (Bulk Delete). | Manage Msgs |
+| `/reset-warns`| - | Limpia el contador de advertencias de un usuario. | Admin |
+| **🛡️ Whitelist** | | | |
+| `/aprobar` | - | Aprueba WL y notifica en canal resultados. | Staff |
+| `/rechazar` | - | Rechaza WL y envía normativa. | Staff |
+| **🔧 Utilidad** | | | |
+| `/stats` | - | Monitor de Recursos (CPU/RAM), Uptime y DB. | Admin |
+| `/ping` | - | Test de latencia y conectividad. | Todos |
 
 ---
 
