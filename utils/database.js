@@ -72,7 +72,7 @@ const initDB = async () => {
                 name VARCHAR(100),
                 description VARCHAR(255),
                 emoji VARCHAR(50),
-                roleId VARCHAR(25),
+                roleId TEXT,
                 targetCategoryId VARCHAR(25),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -93,6 +93,10 @@ const initDB = async () => {
 
         // Ejecución de creación de tablas
         await pool.query(guildSettingsTable);
+        // Migraciones:
+        try { await pool.query("ALTER TABLE guild_settings ADD COLUMN ticketLogsChannel VARCHAR(25)"); } catch (e) { }
+        try { await pool.query("ALTER TABLE ticket_categories MODIFY COLUMN roleId TEXT"); } catch (e) { }
+
         await pool.query(warnsTable);
         await pool.query(activityTable);
         await pool.query(errorsTable);

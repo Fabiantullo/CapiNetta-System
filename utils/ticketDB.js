@@ -5,6 +5,7 @@ const pool = require('./database');
 async function addTicketCategory(guildId, data) {
     try {
         const { name, description, emoji, roleId, targetCategoryId } = data;
+        // roleId se guarda tal cual (string único al crear), pero el formato TEXT permite JSON futuro
         await pool.query(
             'INSERT INTO ticket_categories (guildId, name, description, emoji, roleId, targetCategoryId) VALUES (?, ?, ?, ?, ?, ?)',
             [guildId, name, description, emoji, roleId, targetCategoryId]
@@ -22,6 +23,34 @@ async function removeTicketCategory(guildId, name) {
         return true;
     } catch (e) {
         console.error("Error removing ticket category:", e);
+        return false;
+    }
+}
+
+async function addRoleToCategory(guildId, name, newRoleId) {
+    try {
+        const category = await getCategoryByName(guildId, name);
+        if (!category) return false;
+
+        let roles = [];
+        // Detectar si es array JSON o string simple
+        try {
+            if (category.roleId.startsWith('[')) {
+                roles = JSON.parse(category.roleId);
+            } else {
+                roles = [category.roleId];
+            }
+        } catch (e) {
+            roles = [category.roleId];
+        }
+
+        if (!roles.includes(newRoleId)) {
+            roles.push(newRoleId);
+            await pool.query('UPDATE ticket_categories SET roleId = ? WHERE id = ?', [JSON.stringify(roles), category.id]);
+        }
+        return true;
+    } catch (e) {
+        console.error("Error adding role to category:", e);
         return false;
     }
 }
@@ -88,6 +117,7 @@ async function getTicketByChannel(channelId) {
 module.exports = {
     addTicketCategory,
     removeTicketCategory,
+    addRoleToCategory,
     getTicketCategories,
     getCategoryByName,
     createTicketDB,
