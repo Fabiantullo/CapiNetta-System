@@ -29,14 +29,14 @@ module.exports = {
                 if (!currentSettings) {
                     console.log("🚀 Server principal sin config en DB. Migrando valores predeterminados...");
                     await updateGuildSettings(mainGuildId, {
-                        logs: config.general.logsChannel,
-                        verify: config.general.verifyChannel,
-                        welcome: config.general.welcomeChannel,
-                        support: config.general.supportScamChannel,
-                        rUser: config.general.roleUser,
-                        rNoVerify: config.general.roleNoVerify,
-                        rMuted: config.general.roleMuted,
-                        debug: null // Debug channel por defecto null
+                        logsChannel: config.general.logsChannel,
+                        verifyChannel: config.general.verifyChannel,
+                        welcomeChannel: config.general.welcomeChannel,
+                        supportChannel: config.general.supportScamChannel,
+                        roleUser: config.general.roleUser,
+                        roleNoVerify: config.general.roleNoVerify,
+                        roleMuted: config.general.roleMuted,
+                        debugChannel: null // Debug channel por defecto null
                     });
                     console.log("✅ Migración a DB completada.");
                 }
