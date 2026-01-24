@@ -11,7 +11,7 @@ module.exports = {
         const settings = await getGuildSettings(member.guild.id);
         if (!settings || !settings.welcomeChannel) return;
 
-        // Mantenemos 1024x450 que es el tamaño estándar de banner en Discord
+        // Tamaño estándar de banner en Discord
         const canvas = createCanvas(1024, 450);
         const ctx = canvas.getContext('2d');
 
@@ -19,7 +19,7 @@ module.exports = {
             const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
 
             // --- LÓGICA DE RECORTE (CROP) PARA OCUPAR EL 100% ---
-            // Esto elimina los bordes blancos de tu hero-bg.png y centra la ciudad
+            // Esto elimina los bordes blancos de tu hero-bg.png
             const imgAspect = background.width / background.height;
             const canvasAspect = canvas.width / canvas.height;
 
@@ -37,18 +37,18 @@ module.exports = {
                 sY = (background.height - sHeight) / 2;
             }
 
-            // Dibujamos solo la parte de la ciudad, estirándola al 100% del lienzo
+            // Dibujamos solo la parte de la ciudad estirándola al 100% del lienzo
             ctx.drawImage(background, sX, sY, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
             // ---------------------------------------------------
 
-            // Capa de oscurecimiento para que el texto resalte (100% del ancho)
+            // Capa de oscurecimiento degradada para legibilidad
             const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
             gradient.addColorStop(0, 'rgba(0,0,0,0.8)');
             gradient.addColorStop(1, 'rgba(0,0,0,0.2)');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Avatar, Textos y Sombras (Igual que antes, pero ahora sobre fondo 100%)
+            // Avatar Circular con borde neón
             ctx.save();
             ctx.beginPath();
             ctx.arc(200, 225, 130, 0, Math.PI * 2, true);
@@ -60,6 +60,7 @@ module.exports = {
             ctx.drawImage(avatar, 70, 95, 260, 260);
             ctx.restore();
 
+            // Configuración de textos con sombra
             ctx.shadowColor = "black";
             ctx.shadowBlur = 10;
             ctx.textAlign = "left";
