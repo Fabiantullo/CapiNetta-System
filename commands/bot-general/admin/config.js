@@ -1,97 +1,96 @@
 const {
-    SlashCommandBuilder,
-    EmbedBuilder,
-    PermissionFlagsBits,
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    MessageFlags,
-    ComponentType
+    SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits,
+    ActionRowBuilder, ButtonBuilder, ButtonStyle,
+    StringSelectMenuBuilder, ComponentType, MessageFlags
 } = require('discord.js');
 const { getGuildSettings } = require('../../../utils/dataHandler');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('config')
-        .setDescription('Panel de control y configuración del bot')
+        .setDescription('Panel maestro de configuración: Gestioná canales, roles y módulos')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        const guildId = interaction.guild.id;
+        const { guild } = interaction;
 
-        // 1. Función para generar el Embed del Dashboard
-        async function generateDashboardEmbed(guild) {
-            const settings = await getGuildSettings(guild.id);
+        async function createMainPanel() {
+            const s = await getGuildSettings(guild.id);
+            if (!s) return { content: "⚠️ No hay datos. Usá `/setup` por primera vez.", ephemeral: true };
 
-            if (!settings) return null;
-
-            return new EmbedBuilder()
-                .setTitle(`⚙️ Panel de Control | ${guild.name}`)
-                .setDescription("Estado actual de la vinculación con MariaDB y Discord.")
-                .setColor(0x3498db)
+            const embed = new EmbedBuilder()
+                .setTitle(`⚙️ Centro de Mandos | ${guild.name}`)
+                .setDescription(`Aquí podés ver y modificar toda la infraestructura del bot. \n**Estado del Sistema:** ${s.isSetup ? '🟢 Operativo' : '🟡 Configuración Pendiente'}`)
+                .setColor(s.isSetup ? 0x2ecc71 : 0xf1c40f)
                 .setThumbnail(guild.iconURL({ dynamic: true }))
                 .addFields(
                     {
-                        name: '📂 Canales de Sistema', value: [
-                            `**Auditoría:** ${settings.logsChannel ? `<#${settings.logsChannel}>` : '❌ *No seteado*'}`,
-                            `**Estado:** ${settings.debugChannel ? `<#${settings.debugChannel}>` : '❌ *No seteado*'}`,
-                            `**Verificación:** ${settings.verifyChannel ? `<#${settings.verifyChannel}>` : '❌ *No seteado*'}`
-                        ].join('\n'), inline: false
+                        name: '📡 Canales Críticos', value: [
+                            `> **Logs:** ${s.logsChannel ? `<#${s.logsChannel}>` : '❌ *Sin asignar*'}`,
+                            `> **Debug:** ${s.debugChannel ? `<#${s.debugChannel}>` : '❌ *Sin asignar*'}`,
+                            `> **Verificación:** ${s.verifyChannel ? `<#${s.verifyChannel}>` : '❌ *Sin asignar*'}`
+                        ].join('\n'), inline: true
                     },
                     {
-                        name: '🎭 Gestión de Roles', value: [
-                            `**Usuario:** ${settings.roleUser ? `<@&${settings.roleUser}>` : '❌ *No seteado*'}`,
-                            `**Muteado:** ${settings.roleMuted ? `<@&${settings.roleMuted}>` : '❌ *No seteado*'}`
+                        name: '🎭 Jerarquía de Roles', value: [
+                            `> **Verificado:** ${s.roleUser ? `<@&${s.roleUser}>` : '❌ *Sin asignar*'}`,
+                            `> **Sin Verificar:** ${s.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌ *Sin asignar*'}`,
+                            `> **Muteado:** ${s.roleMuted ? `<@&${s.roleMuted}>` : '❌ *Sin asignar*'}`
+                        ].join('\n'), inline: true
+                    },
+                    {
+                        name: '🚀 Módulos Especializados', value: [
+                            `**Welcome Canvas:** ${s.welcomeChannel ? `<#${s.welcomeChannel}> (Activo ✅)` : '🔘 *Desactivado*'}`,
+                            `**Soporte/Aislados:** ${s.supportChannel ? `<#${s.supportChannel}> (Activo ✅)` : '🔘 *Desactivado*'}`
                         ].join('\n'), inline: false
                     }
                 )
-                .setFooter({ text: `Server ID: ${guild.id} • Capi Netta RP` })
+                .setFooter({ text: `ID del Servidor: ${guild.id}` })
                 .setTimestamp();
+
+            // Menú para elegir qué editar directamente
+            const menu = new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId('edit_category')
+                    .setPlaceholder('🎯 ¿Qué sección querés modificar?')
+                    .addOptions([
+                        { label: 'Canales de Sistema', description: 'Logs, Debug y Verificación', value: 'cat_channels', emoji: '📡' },
+                        { label: 'Gestión de Roles', description: 'Usuario, No-Verificado y Mute', value: 'cat_roles', emoji: '🎭' },
+                        { label: 'Módulos Avanzados', description: 'Bienvenidas y Soporte', value: 'cat_modules', emoji: '🚀' },
+                    ])
+            );
+
+            const buttons = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('refresh_config').setLabel('Refrescar Datos').setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+                new ButtonBuilder().setCustomId('full_wizard').setLabel('Asistente Completo').setStyle(ButtonStyle.Primary).setEmoji('🪄')
+            );
+
+            return { embeds: [embed], components: [menu, buttons], flags: [MessageFlags.Ephemeral] };
         }
 
-        const embed = await generateDashboardEmbed(interaction.guild);
+        const initialPanel = await createMainPanel();
+        const response = await interaction.reply(initialPanel);
 
-        if (!embed) {
-            return interaction.reply({
-                content: "⚠️ El servidor no tiene configuración. Usá `/setup` para empezar.",
-                flags: [MessageFlags.Ephemeral]
-            });
-        }
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('start_wizard')
-                .setLabel('⚙️ Editar Configuración')
-                .setStyle(ButtonStyle.Primary),
-            new ButtonBuilder()
-                .setCustomId('refresh_config')
-                .setLabel('🔄 Refrescar')
-                .setStyle(ButtonStyle.Secondary)
-        );
-
-        const response = await interaction.reply({
-            embeds: [embed],
-            components: [row],
-            flags: [MessageFlags.Ephemeral]
-        });
-
-        // 2. Manejo de botones del Dashboard
-        const collector = response.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+        const collector = response.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async i => {
             if (i.customId === 'refresh_config') {
-                const newEmbed = await generateDashboardEmbed(interaction.guild);
-                return i.update({ embeds: [newEmbed] });
+                const refreshed = await createMainPanel();
+                return i.update(refreshed);
             }
 
-            if (i.customId === 'start_wizard') {
-                // Al presionar editar, avisamos que debe usar /setup para el wizard completo o 
-                // podríamos disparar la lógica del setup aquí. 
-                // Por simplicidad y para no duplicar 200 líneas de código, lo redirigimos:
-                await i.reply({
-                    content: "🚀 **Lanzando Asistente...** Por seguridad y orden, usá el comando `/setup` para iniciar el Wizard interactivo y modificar los canales o roles.",
-                    flags: [MessageFlags.Ephemeral]
-                });
+            if (i.customId === 'edit_category') {
+                const selection = i.values[0];
+                let msg = "";
+                if (selection === 'cat_channels') msg = "Has seleccionado **Canales**. Iniciando asistente de canales...";
+                if (selection === 'cat_roles') msg = "Has seleccionado **Roles**. Iniciando asistente de roles...";
+                if (selection === 'cat_modules') msg = "Has seleccionado **Módulos**. Iniciando configuración de Bienvenida/Soporte...";
+
+                await i.reply({ content: `🛠️ **Modo Edición:** ${msg} \n*(Por ahora, usá /setup mientras termino de linkear las funciones directas)*`, flags: [MessageFlags.Ephemeral] });
+            }
+
+            if (i.customId === 'full_wizard') {
+                await i.reply({ content: "🚀 **Lanzando Asistente...** Por seguridad y orden, usá el comando `/setup` para iniciar el Wizard interactivo completo.", flags: [MessageFlags.Ephemeral] });
             }
         });
     },
