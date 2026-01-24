@@ -11,30 +11,24 @@ module.exports = {
         const settings = await getGuildSettings(member.guild.id);
         if (!settings || !settings.welcomeChannel) return;
 
-        // Tamaño exacto del banner de Discord
         const canvas = createCanvas(1024, 450);
         const ctx = canvas.getContext('2d');
 
         try {
             const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
 
-            // --- EL "SÚPER ZOOM" PARA SACAR LO GRIS Y BLANCO ---
-            // Definimos qué parte de la foto original vamos a usar (sacando los bordes blancos)
-            // Ajustamos estos valores para "entrar" directo a la ciudad
-            const zoomX = background.width * 0.10; // Recortamos 10% de cada lado
-            const zoomY = background.height * 0.20; // Recortamos 20% arriba y abajo (lo más blanco)
+            // 1. ZOOM PARA ELIMINAR BORDES (100% Pantalla)
+            const zoomX = background.width * 0.10;
+            const zoomY = background.height * 0.20;
             const zoomWidth = background.width * 0.80;
             const zoomHeight = background.height * 0.60;
-
-            // Dibujamos la ciudad estirándola para que no quede ni un píxel gris
             ctx.drawImage(background, zoomX, zoomY, zoomWidth, zoomHeight, 0, 0, canvas.width, canvas.height);
-            // ---------------------------------------------------
 
-            // Filtro de oscuridad para que el texto sea legible (100% del banner)
+            // 2. Filtro de oscuridad
             ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Avatar con borde neón
+            // 3. Avatar Circular con Neón
             ctx.save();
             ctx.beginPath();
             ctx.arc(200, 225, 135, 0, Math.PI * 2, true);
@@ -46,35 +40,47 @@ module.exports = {
             ctx.drawImage(avatar, 65, 90, 270, 270);
             ctx.restore();
 
-            // Textos con sombra pesada para que "salten" de la pantalla
+            // 4. LÓGICA DE TEXTO CON AUTO-ESCALA PARA NOMBRES LARGOS
             ctx.shadowColor = "black";
             ctx.shadowBlur = 15;
             ctx.textAlign = "left";
 
+            // Título
             ctx.fillStyle = '#ffffff';
             ctx.font = '42px "GTA"';
             ctx.fillText('¡BIENVENIDO/A A LA CIUDAD!', 380, 170);
 
+            // --- Nombre de Usuario Dinámico ---
             ctx.fillStyle = '#3498db';
-            ctx.font = '100px "GTA"'; // Nombre bien potente
-            ctx.fillText(member.user.username.toUpperCase(), 380, 280);
+            let fontSize = 100;
+            const userName = member.user.username.toUpperCase();
 
+            // Si el nombre es muy largo, bajamos el tamaño de fuente hasta que entre
+            do {
+                ctx.font = `${fontSize}px "GTA"`;
+                fontSize -= 5;
+            } while (ctx.measureText(userName).width > 600 && fontSize > 40);
+
+            ctx.fillText(userName, 380, 280);
+
+            // Contador
             ctx.fillStyle = '#aaaaaa';
             ctx.font = '30px "GTA"';
             ctx.fillText(`CIUDADANO NÚMERO #${member.guild.memberCount}`, 380, 360);
 
+            // 5. ENVÍO CON MENCIÓN (PULL)
             const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'bienvenida-capi.png' });
             const channel = await member.guild.channels.fetch(settings.welcomeChannel);
 
             if (channel) {
                 await channel.send({
-                    content: `🔥 **${member.user.username}**, ¡ya estás en las calles de **${member.guild.name}**!`,
+                    content: `🔥 <@${member.id}>, ¡ya estás en las calles de **${member.guild.name}**!`, // Aquí recuperamos la mención
                     files: [attachment]
                 });
             }
 
         } catch (err) {
-            console.error("Fallo técnico en la imagen:", err);
+            console.error("Error en bienvenida:", err);
         }
     },
 };
