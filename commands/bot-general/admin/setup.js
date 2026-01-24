@@ -1,3 +1,14 @@
+/**
+ * @file setup.js
+ * @description Asistente de Configuración (Wizard) interactivo.
+ * Guía al administrador paso a paso para configurar los canales y roles esenciales del bot.
+ * 
+ * Flujo:
+ * Paso 1: Selección de Canales Clave (Logs, Verify, Debug).
+ * Paso 2: Selección de Roles (User, NoVerify, Muted).
+ * Paso 3: Módulos Opcionales (Support, Welcome) y Finalización.
+ */
+
 const {
     SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder,
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder,
@@ -15,17 +26,21 @@ module.exports = {
     async execute(interaction) {
         const guild = interaction.guild;
 
-        // CONFIGURACIÓN: Nombres idénticos a las columnas de MariaDB
+        // Estado inicial de la configuración (se va llenando paso a paso)
         let config = {
             logsChannel: null, verifyChannel: null, debugChannel: null,
             roleUser: null, roleNoVerify: null, roleMuted: null,
             welcomeChannel: null, supportChannel: null, isSetup: 1
         };
 
-        let step = 1;
+        let step = 1; // Control de flujo del Wizard
 
+        /**
+         * Genera el Embed visual según el paso actual.
+         */
         const getEmbed = () => {
             const embed = new EmbedBuilder().setTitle("🛠️ Asistente de Configuración | Capi Netta RP").setColor(0x3498db).setTimestamp();
+
             if (step === 1) {
                 embed.setDescription("### Paso 1: Canales del Sistema\nSeleccioná los canales para **Logs**, **Verificación** y **Debug**.");
                 embed.addFields(
@@ -50,15 +65,22 @@ module.exports = {
             return embed;
         };
 
+        /**
+         * Genera los componentes (SelectMenus y Botones) según el paso.
+         */
         const getComponents = () => {
             const rows = [];
             if (step === 1) {
+                // Paso 1: ChannelSelect (Max 3)
                 rows.push(new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('select_channels').setPlaceholder('Seleccionar canales...').addChannelTypes(ChannelType.GuildText).setMaxValues(3)));
+                // Botón Next (Habilitado solo si se seleccionaron los obligatorios)
                 rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next').setLabel('Siguiente ➡️').setStyle(ButtonStyle.Primary).setDisabled(!config.logsChannel || !config.verifyChannel)));
             } else if (step === 2) {
+                // Paso 2: RoleSelect (Max 3)
                 rows.push(new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('select_roles').setPlaceholder('Seleccionar roles...').setMaxValues(3)));
                 rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next').setLabel('Siguiente ➡️').setStyle(ButtonStyle.Primary).setDisabled(!config.roleUser || !config.roleMuted)));
             } else {
+                // Paso 3: ChannelSelect Opcional
                 rows.push(new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('select_optional').setPlaceholder('Canales opcionales...').addChannelTypes(ChannelType.GuildText).setMaxValues(2)));
                 rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('finish').setLabel('✅ Finalizar Setup').setStyle(ButtonStyle.Success)));
             }
@@ -66,9 +88,12 @@ module.exports = {
         };
 
         const message = await interaction.reply({ embeds: [getEmbed()], components: getComponents(), flags: [MessageFlags.Ephemeral] });
+
+        // Collector de 5 minutos
         const collector = message.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async i => {
+            // Actualización de estado (config) según selecciones
             if (i.customId === 'select_channels') {
                 config.logsChannel = i.values[0];
                 config.verifyChannel = i.values[1] || config.verifyChannel;
@@ -83,17 +108,20 @@ module.exports = {
                 config.welcomeChannel = i.values[0];
                 config.supportChannel = i.values[1] || config.supportChannel;
             }
+
+            // Navegación
             if (i.customId === 'next') step++;
             if (i.customId === 'finish') {
                 try {
                     await updateGuildSettings(guild.id, config);
                     return i.update({ content: "🎉 **¡Configuración completada con éxito!**", embeds: [], components: [] });
                 } catch (err) {
-                    // FIX: Usamos interaction.client para evitar el ReferenceError
                     logError(interaction.client, err, "Finalizar Setup Wizard", guild.id);
                     return i.update({ content: "❌ Error al guardar. Revisá MariaDB.", embeds: [], components: [] });
                 }
             }
+
+            // Re-render
             await i.update({ embeds: [getEmbed()], components: getComponents() });
         });
     }

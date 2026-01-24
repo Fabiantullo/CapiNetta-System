@@ -1,26 +1,32 @@
-const { logError } = require("../../utils/logger");
+/**
+ * @file ready.js
+ * @description Evento de incialización del bot de Whitelist.
+ * Verifica conexión y existencia del canal configurado.
+ */
+
 const config = require("../../config").whitelist;
 
 module.exports = {
-    name: "clientReady", // Cambiado para que coincida con el general
+    name: "clientReady",
     once: true,
     async execute(client) {
         console.log(`✅ ${client.user.tag} [Whitelist] está online.`);
 
-        // Canal de Whitelist - Limpiamos la lógica de pins para que no tire error
+        // Verificación básica del canal de Whitelist para prevenir errores de configuración
         const wlChannel = await client.channels.fetch(config.channelId).catch(() => null);
-        if (wlChannel) {
+
+        if (!wlChannel) {
+            console.warn(`⚠️ ALERTA: No se pudo acceder al canal de Whitelist (ID: ${config.channelId}). Revisá la config.`);
+        } else {
+            // (Opcional) Lógica de verificación de pines o mensajes de bienvenida
             try {
                 const pins = await wlChannel.messages.fetchPins();
-                // Simplemente verificamos sin usar funciones complejas
-                let hasPin = false;
-                pins.forEach(m => { if (m.author.id === client.user.id) hasPin = true; });
-
+                const hasPin = pins.some(m => m.author.id === client.user.id);
                 if (!hasPin) {
-                    console.log("No hay mensajes fijados del bot en Whitelist.");
+                    console.log("ℹ️ No detecté mensajes fijados del bot en el canal de Whitelist.");
                 }
             } catch (err) {
-                // No hacemos nada si falla, para que el bot no se caiga
+                // Silencioso
             }
         }
     },

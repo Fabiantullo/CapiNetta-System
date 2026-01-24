@@ -1,6 +1,22 @@
+/**
+ * @file interactionCreate.js
+ * @description Manejador de interacciones para el bot de Whitelist.
+ * Inyecta funciones de utilidad (Dependency Injection) a los comandos para simplificar su lógica.
+ */
+
 const config = require("../../config");
 const { EmbedBuilder } = require("discord.js");
 
+/**
+ * Función auxiliar para enviar embeds estandarizados de Whitelist.
+ * Se pasa como argumento a los comandos `aprobar/rechazar`.
+ * 
+ * @param {TextChannel} channel - Canal destino.
+ * @param {User} user - Usuario afectado.
+ * @param {string} estado - "aprobada" | "rechazada"
+ * @param {HexColorString} color - Color del embed.
+ * @param {string} [normativa=""] - Texto extra (razón/normativa).
+ */
 async function sendWhitelistEmbed(channel, user, estado, color, normativa = "") {
     const embed = new EmbedBuilder()
         .setColor(color)
@@ -19,21 +35,21 @@ module.exports = {
     async execute(client, interaction) {
         if (!interaction.isChatInputCommand()) return;
 
-        // 🔒 SOLO STAFF
+        // 🔒 VERIFICACIÓN DE SEGURIDAD (SOLO STAFF)
         if (!interaction.member.roles.cache.has(config.whitelist.staffRoleId)) {
-            return interaction.reply({ content: "⛔ Este comando es solo para el staff.", ephemeral: true });
+            return interaction.reply({ content: "⛔ Acceso denegado. Solo Staff.", ephemeral: true });
         }
 
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
 
         try {
-            // Pasar la función auxiliar si es necesaria, o importarla en el comando
+            // Inyectamos `sendWhitelistEmbed` para que los comandos la usen sin requerirla
             await command.execute(interaction, { sendWhitelistEmbed });
         } catch (error) {
-            console.error("❌ Error manejando la interacción:", error);
+            console.error("❌ Error WL Interaction:", error);
             if (!interaction.replied) {
-                interaction.reply({ content: "❌ Ocurrió un error al procesar el comando.", ephemeral: true });
+                interaction.reply({ content: "❌ Error interno del bot.", ephemeral: true });
             }
         }
     },

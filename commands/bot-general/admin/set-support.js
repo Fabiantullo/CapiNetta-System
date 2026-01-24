@@ -1,3 +1,9 @@
+/**
+ * @file set-support.js
+ * @description Comando para la zona de "Aislamiento/Soporte".
+ * Fija un mensaje informativo para usuarios restringidos.
+ */
+
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
 module.exports = {
@@ -20,7 +26,7 @@ module.exports = {
             .setFooter({ text: "Seguridad | Capi Netta RP" });
 
         const message = await interaction.channel.send({ embeds: [supportEmbed] });
-        await message.pin(); // El bot fija el mensaje automáticamente
+        await message.pin(); // Anclar mensaje
 
         await interaction.reply({ content: "✅ Mensaje de soporte enviado y fijado.", ephemeral: true });
     },

@@ -1,3 +1,10 @@
+/**
+ * @file config.js
+ * @description Dashboard Maestro interactivo.
+ * Muestra el estado actual de la configuración del servidor y permite editar campos individuales
+ * mediante un sistema de menús desplegables (SelectMenus).
+ */
+
 const {
     SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits,
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -14,8 +21,11 @@ module.exports = {
 
     async execute(interaction) {
         const { guild } = interaction;
-        let selectedField = null;
+        let selectedField = null; // Campo que se está editando actualmente
 
+        /**
+         * Renderiza el Panel Principal con la info actual de DB.
+         */
         async function renderFullPanel() {
             const s = await getGuildSettings(guild.id);
             const embed = new EmbedBuilder()
@@ -30,6 +40,7 @@ module.exports = {
                 )
                 .setFooter({ text: "Capi Netta System • Gestión de Alta Eficiencia" });
 
+            // Menú de Categorías (Primer Nivel)
             const menu = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder().setCustomId('cat_select').setPlaceholder('🎯 Elegí qué sección editar...').addOptions([
                     { label: 'Canales de Sistema', value: 'cat_channels', emoji: '📡' },
@@ -47,7 +58,7 @@ module.exports = {
         }
 
         const response = await interaction.reply({ ...(await renderFullPanel()), flags: [MessageFlags.Ephemeral] });
-        const collector = response.createMessageComponentCollector({ time: 600000 });
+        const collector = response.createMessageComponentCollector({ time: 600000 }); // 10 Minutos
 
         collector.on('collect', async i => {
             if (i.customId === 'close_panel') {
@@ -56,6 +67,7 @@ module.exports = {
 
             if (i.customId === 'refresh') return i.update(await renderFullPanel());
 
+            // Nivel 1: Selección de Categoría -> Muestra sub-menú de campos
             if (i.customId === 'cat_select') {
                 const cat = i.values[0];
                 const opts = cat === 'cat_channels' ? [
@@ -72,6 +84,7 @@ module.exports = {
                 return i.update({ components: [sub] });
             }
 
+            // Nivel 2: Selección de Campo -> Muestra selector de Role/Channel para editar
             if (i.customId === 'field_select') {
                 selectedField = i.values[0];
                 const selector = new ActionRowBuilder().addComponents(
@@ -81,10 +94,12 @@ module.exports = {
                 return i.update({ content: `🛠️ Seleccioná el nuevo valor para **${selectedField}**`, components: [selector] });
             }
 
+            // Nivel 3: Guardar Valor (Acción Final)
             if (i.customId === 'save') {
                 await i.update({ content: `💾 Guardando en MariaDB...`, components: [] });
                 try {
                     await updateGuildSettings(guild.id, { [selectedField]: i.values[0] });
+                    // Volver al panel principal tras guardar
                     setTimeout(async () => {
                         await interaction.editReply(await renderFullPanel());
                     }, 1000);

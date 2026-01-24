@@ -1,3 +1,9 @@
+/**
+ * @file ticket.js
+ * @description Comando principal de administración de Tickets (/ticket).
+ * Permite configurar categorías, roles, logs y enviar el Panel de Creación.
+ */
+
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, AttachmentBuilder } = require('discord.js');
 const { addTicketCategory, removeTicketCategory, getTicketCategories, addRoleToCategory } = require('../../../utils/ticketDB');
 
@@ -6,7 +12,9 @@ module.exports = {
         .setName('ticket')
         .setDescription('Gestión del sistema de Tickets')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        // Subcomando: ADD
+
+        // --- SUBCOMANDOS DE CONFIGURACIÓN ---
+
         .addSubcommand(sub =>
             sub.setName('add')
                 .setDescription('Añadir una nueva categoría de tickets')
@@ -16,30 +24,25 @@ module.exports = {
                 .addStringOption(opt => opt.setName('emoji').setDescription('Emoji representativo (ej: 🔧)').setRequired(true))
                 .addStringOption(opt => opt.setName('descripcion').setDescription('Breve descripción para el menú').setRequired(true))
         )
-        // Subcomando: ADDROLE (Gestión de múltiples roles)
         .addSubcommand(sub =>
             sub.setName('addrole')
                 .setDescription('Agregar un rol EXTRA para ver tickets de una categoría')
                 .addStringOption(opt => opt.setName('categoria').setDescription('Nombre exacto de la categoría').setRequired(true))
                 .addRoleOption(opt => opt.setName('rol').setDescription('Rol extra a añadir').setRequired(true))
         )
-        // Subcomando: REMOVE
         .addSubcommand(sub =>
             sub.setName('remove')
                 .setDescription('Eliminar una categoría existente')
                 .addStringOption(opt => opt.setName('nombre').setDescription('Nombre exacto de la categoría a borrar').setRequired(true))
         )
-        // Subcomando: LIST
         .addSubcommand(sub =>
             sub.setName('list')
                 .setDescription('Listar todas las categorías configuradas')
         )
-        // Subcomando: PANEL
         .addSubcommand(sub =>
             sub.setName('panel')
                 .setDescription('Enviar el panel de creación de tickets a este canal')
         )
-        // Subcomando: SETLOGS
         .addSubcommand(sub =>
             sub.setName('setlogs')
                 .setDescription('Configurar el canal donde se enviarán los transcripts')
@@ -50,7 +53,7 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
 
-        // --- SETLOGS ---
+        // 1. CONFIGURACIÓN DE LOGS
         if (sub === 'setlogs') {
             const channel = interaction.options.getChannel('canal');
             const { updateGuildSettings } = require('../../../utils/dataHandler');
@@ -63,7 +66,7 @@ module.exports = {
             }
         }
 
-        // --- ADD ---
+        // 2. AÑADIR CATEGORÍA
         if (sub === 'add') {
             const name = interaction.options.getString('nombre');
             const role = interaction.options.getRole('rol');
@@ -75,7 +78,7 @@ module.exports = {
                 name,
                 description: desc,
                 emoji,
-                roleId: role.id, // Se guarda como string inicialmente
+                roleId: role.id, // Se guarda como string inicialmente (o el primer ID si fuésemos a array directo, pero DB espera String)
                 targetCategoryId: parentCat.id
             });
 
@@ -86,7 +89,7 @@ module.exports = {
             }
         }
 
-        // --- ADDROLE ---
+        // 3. AÑADIR ROL SECUNDARIO
         if (sub === 'addrole') {
             const name = interaction.options.getString('categoria');
             const role = interaction.options.getRole('rol');
@@ -99,7 +102,7 @@ module.exports = {
             }
         }
 
-        // --- REMOVE ---
+        // 4. ELIMINAR CATEGORÍA
         if (sub === 'remove') {
             const name = interaction.options.getString('nombre');
             const success = await removeTicketCategory(guildId, name);
@@ -110,12 +113,13 @@ module.exports = {
             }
         }
 
-        // --- LIST ---
+        // 5. LISTAR CATEGORÍAS
         if (sub === 'list') {
             const categories = await getTicketCategories(guildId);
             if (categories.length === 0) return interaction.reply({ content: "⚠️ No hay categorías configuradas.", ephemeral: true });
 
             const list = categories.map(c => {
+                // Parseo visual de roles (puede ser ID o Array JSON)
                 let rolesDisplay = c.roleId;
                 if (c.roleId.startsWith('[')) {
                     try {
@@ -132,7 +136,7 @@ module.exports = {
             return interaction.reply({ embeds: [embed], ephemeral: true });
         }
 
-        // --- PANEL (MODO BOTONES) ---
+        // 6. ENVIAR PANEL (Grid de Botones)
         if (sub === 'panel') {
             const categories = await getTicketCategories(guildId);
             if (categories.length === 0) return interaction.reply({ content: "⚠️ Primero debes añadir categorías con `/ticket add`.", ephemeral: true });
@@ -158,7 +162,7 @@ module.exports = {
                 .setColor(0x2ecc71)
                 .setFooter({ text: "Sistema de Tickets Automático" });
 
-            // 2. Construir Grid de Botones
+            // 2. Construir Grid de Botones (Max 5 por fila)
             const rows = [];
             let currentRow = new ActionRowBuilder();
 
@@ -169,6 +173,7 @@ module.exports = {
                     .setEmoji(c.emoji)
                     .setStyle(ButtonStyle.Secondary);
 
+                // Lógica de salto de fila
                 if (currentRow.components.length >= 5) {
                     rows.push(currentRow);
                     currentRow = new ActionRowBuilder();

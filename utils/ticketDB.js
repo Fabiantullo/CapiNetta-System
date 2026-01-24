@@ -1,11 +1,25 @@
+/**
+ * @file ticketDB.js
+ * @description Capa de abstracción de Base de Datos para el sistema de Tickets.
+ * Contiene todas las consultas SQL (queries) para manejar categorías, tickets y logs.
+ * Usa connection pool de mysql2.
+ */
+
 const pool = require('./database');
 
-// --- Categorías ---
+// =============================================================================
+//                             GESTIÓN DE CATEGORÍAS
+// =============================================================================
 
+/**
+ * Crea una nueva categoría de tickets en la base de datos.
+ * @param {string} guildId - ID del servidor.
+ * @param {Object} data - Objeto con name, description, emoji, roleId, targetCategoryId.
+ * @returns {Promise<boolean>} True si fue exitoso.
+ */
 async function addTicketCategory(guildId, data) {
     try {
         const { name, description, emoji, roleId, targetCategoryId } = data;
-        // roleId se guarda tal cual (string único al crear), pero el formato TEXT permite JSON futuro
         await pool.query(
             'INSERT INTO ticket_categories (guildId, name, description, emoji, roleId, targetCategoryId) VALUES (?, ?, ?, ?, ?, ?)',
             [guildId, name, description, emoji, roleId, targetCategoryId]
@@ -17,6 +31,9 @@ async function addTicketCategory(guildId, data) {
     }
 }
 
+/**
+ * Elimina una categoría por nombre.
+ */
 async function removeTicketCategory(guildId, name) {
     try {
         await pool.query('DELETE FROM ticket_categories WHERE guildId = ? AND name = ?', [guildId, name]);
@@ -27,13 +44,17 @@ async function removeTicketCategory(guildId, name) {
     }
 }
 
+/**
+ * Añade un rol adicional a la lista de permitidos de una categoría.
+ * Maneja la conversión de String simple a JSON Array si es necesario.
+ */
 async function addRoleToCategory(guildId, name, newRoleId) {
     try {
         const category = await getCategoryByName(guildId, name);
         if (!category) return false;
 
         let roles = [];
-        // Detectar si es array JSON o string simple
+        // Detectar si el campo roleId tiene formato JSON (Array) o es un ID plano
         try {
             if (category.roleId.startsWith('[')) {
                 roles = JSON.parse(category.roleId);
@@ -46,6 +67,7 @@ async function addRoleToCategory(guildId, name, newRoleId) {
 
         if (!roles.includes(newRoleId)) {
             roles.push(newRoleId);
+            // Actualizamos la DB guardando el array como JSON string
             await pool.query('UPDATE ticket_categories SET roleId = ? WHERE id = ?', [JSON.stringify(roles), category.id]);
         }
         return true;
@@ -74,21 +96,30 @@ async function getCategoryByName(guildId, name) {
     }
 }
 
-// --- Tickets ---
+// =============================================================================
+//                             GESTIÓN DE TICKETS ACTIVOS
+// =============================================================================
 
+/**
+ * Registra un nuevo ticket en la tabla 'tickets' y devuelve su ID autoincremental.
+ * El ID se usa para nombrar el canal (ticket-0001).
+ */
 async function createTicketDB(guildId, userId, type) {
     try {
         const [result] = await pool.query(
             'INSERT INTO tickets (guildId, userId, type, status) VALUES (?, ?, ?, "open")',
             [guildId, userId, type]
         );
-        return result.insertId; // Retorna el ID autoincremental para usar en el nombre del canal
+        return result.insertId;
     } catch (e) {
         console.error("Error creating ticket in DB:", e);
         return null;
     }
 }
 
+/**
+ * Asocia el ID del canal de Discord creado al ticket en DB.
+ */
 async function updateTicketChannel(ticketId, channelId) {
     try {
         await pool.query('UPDATE tickets SET channelId = ? WHERE ticketId = ?', [channelId, ticketId]);
@@ -97,6 +128,9 @@ async function updateTicketChannel(ticketId, channelId) {
     }
 }
 
+/**
+ * Asigna el ticket a un miembro del Staff (Claim/Transfer).
+ */
 async function assignTicket(channelId, staffId) {
     try {
         await pool.query('UPDATE tickets SET claimedBy = ? WHERE channelId = ?', [staffId, channelId]);
@@ -107,13 +141,17 @@ async function assignTicket(channelId, staffId) {
     }
 }
 
+/**
+ * Registra una acción en el historial (ticket_actions) para estadísticas.
+ * @param {string} action - 'OPEN', 'CLAIM', 'TRANSFER', 'CLOSE'
+ */
 async function logTicketActionDB(ticketId, action, executorId, targetId = null) {
     try {
         await pool.query(
             'INSERT INTO ticket_actions (ticketId, action, executorId, targetId) VALUES (?, ?, ?, ?)',
             [ticketId, action, executorId, targetId]
         );
-        // Actualizar ultima actividad
+        // Actualizar timestamp de última actividad
         await pool.query('UPDATE tickets SET lastActivity = NOW() WHERE ticketId = ?', [ticketId]);
     } catch (e) {
         console.error("Error logging ticket action DB:", e);

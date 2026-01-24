@@ -1,3 +1,9 @@
+/**
+ * @file db-tables.js
+ * @description Comando de diagnóstico para verificar el estado de las tablas en MariaDB.
+ * Muestra el conteo de filas en las tablas principales (Settings, Warns, Tickets).
+ */
+
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const pool = require('../../../utils/database');
 
@@ -9,19 +15,23 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            // Consultamos las tablas configuradas en database.js
+            // Consultas de conteo para cada tabla crítica
             const [guilds] = await pool.query('SELECT COUNT(*) as count FROM guild_settings');
             const [warns] = await pool.query('SELECT COUNT(*) as count FROM warns');
             const [logs] = await pool.query('SELECT COUNT(*) as count FROM warn_logs');
+
+            // Consultas del Sistema de Tickets
+            const [tickets] = await pool.query('SELECT COUNT(*) as count FROM tickets');
+            const [ticketActions] = await pool.query('SELECT COUNT(*) as count FROM ticket_actions');
+            const [ticketCats] = await pool.query('SELECT COUNT(*) as count FROM ticket_categories');
 
             const embed = new EmbedBuilder()
                 .setTitle('🗄️ Resumen de Base de Datos')
                 .setColor(0x3498db)
                 .setDescription('Estado actual de las tablas de persistencia.')
                 .addFields(
-                    { name: '🛡️ Config Servidores', value: `\`${guilds[0].count}\` servidores registrados.`, inline: false },
-                    { name: '⚠️ Advertencias Activas', value: `\`${warns[0].count}\` usuarios con historial/roles.`, inline: false },
-                    { name: '📜 Logs Históricos', value: `\`${logs[0].count}\` registros de auditoría.`, inline: false }
+                    { name: '🛡️ Core', value: `Configuraciones: \`${guilds[0].count}\`\nAdvertencias: \`${warns[0].count}\`\nLogs Auditoría: \`${logs[0].count}\``, inline: true },
+                    { name: '🎫 Tickets', value: `Tickets Totales: \`${tickets[0].count}\`\nAcciones Reg.: \`${ticketActions[0].count}\`\nCategorías: \`${ticketCats[0].count}\``, inline: true }
                 )
                 .setTimestamp();
 

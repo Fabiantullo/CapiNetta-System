@@ -1,3 +1,9 @@
+/**
+ * @file set-debug.js
+ * @description Comando rápido para reconfigurar el canal de Debug del servidor.
+ * Permite cambiar solo el canal de alertas sin pasar por todo el wizard de /setup.
+ */
+
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { getGuildSettings, updateGuildSettings } = require('../../../utils/dataHandler');
 const { logError } = require('../../../utils/logger');
@@ -19,40 +25,30 @@ module.exports = {
         const newDebugChannel = interaction.options.getChannel('canal').id;
 
         try {
-            // 1. Buscamos la configuración actual
+            // 1. Obtener configuración actual para no perder datos
             const currentSettings = await getGuildSettings(guildId);
 
             if (!currentSettings) {
                 return interaction.reply({
-                    content: "⚠️ No encontré una configuración base. Por favor, ejecutá `/setup` primero para inicializar el servidor.",
+                    content: "⚠️ Configuración no encontrada. Ejecutá `/setup` para inicializar el servidor primero.",
                     ephemeral: true
                 });
             }
 
-            // 2. Mapeamos los datos viejos y solo reemplazamos el canal de debug
-            const updatedSettings = {
-                logs: currentSettings.logsChannel,
-                verify: currentSettings.verifyChannel,
-                rUser: currentSettings.roleUser,
-                rNoVerify: currentSettings.roleNoVerify,
-                rMuted: currentSettings.roleMuted,
-                welcome: currentSettings.welcomeChannel,
-                support: currentSettings.supportChannel,
-                debug: newDebugChannel // <-- El cambio quirúrgico
-            };
-
-            // 3. Guardamos en la MariaDB
-            await updateGuildSettings(guildId, updatedSettings);
+            // 2. Actualizar solo el campo 'debug' (partial update)
+            // Nota: updateGuildSettings usa MERGE/UPSERT en SQL, pero pasamos ID para asegurar integridad
+            await updateGuildSettings(guildId, {
+                debugChannel: newDebugChannel // Usamos la key correcta que espera DB
+            });
 
             await interaction.reply({
-                content: `✅ Canal de estado actualizado a <#${newDebugChannel}> sin tocar el resto de la config.`,
+                content: `✅ Canal de Debug redirigido a <#${newDebugChannel}> correctamente.`,
                 ephemeral: true
             });
 
         } catch (error) {
-            // Si algo falla, lo mandamos al logger (que ahora usa el client)
             await logError(interaction.client, error, "Comando set-debug", guildId);
-            await interaction.reply({ content: "❌ Error al actualizar la base de datos.", ephemeral: true });
+            await interaction.reply({ content: "❌ Error actualizando la base de datos.", ephemeral: true });
         }
     },
 };

@@ -1,5 +1,10 @@
+/**
+ * @file debug-test.js
+ * @description Comando de desarrollo para probar el sistema de reporte de errores.
+ * Fuerza una excepción controlada para verificar que el logger envíe la alerta a Discord.
+ */
+
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { logError } = require('../../../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,14 +14,19 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            // Forzamos un error de referencia para la prueba
-            throw new Error("Test de sistema: Verificando canal de errores dinámico.");
+            // Generamos un error artificial
+            throw new Error("Simulación: Fallo crítico de prueba iniciado por admin.");
         } catch (error) {
-            // Usamos el nuevo logError con el cliente y el guildId
+            // Importación bajo demanda para evitar ciclos si fuera necesario
             const { logError } = require('../../../utils/logger');
+
+            // Enviamos el error al sistema de logs
             await logError(interaction.client, error, "Comando Debug-Test", interaction.guild.id);
 
-            await interaction.reply({ content: "🚨 Error de prueba enviado al canal de estado/logs.", ephemeral: true });
+            await interaction.reply({
+                content: "🚨 Excepción lanzada. Verificá si llegó al canal de logs/debug configurado.",
+                ephemeral: true
+            });
         }
     },
 };

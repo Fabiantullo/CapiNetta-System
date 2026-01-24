@@ -1,3 +1,9 @@
+/**
+ * @file set-verify.js
+ * @description Comando para establecer la "Zona de Verificación".
+ * Envía un Embed estético con un botón de verificación integrado.
+ */
+
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require("discord.js");
 
 module.exports = {
@@ -7,6 +13,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
+        // Embed de instrucciones
         const verifyEmbed = new EmbedBuilder()
             .setAuthor({ name: "Administración | Capi Netta RP" })
             .setTitle("Obtén tu verificación")
@@ -18,6 +25,7 @@ module.exports = {
             )
             .setColor(0x3498db);
 
+        // Botón Interactivo (trigger: 'verify')
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("verify")
@@ -26,10 +34,10 @@ module.exports = {
                 .setStyle(ButtonStyle.Success)
         );
 
-        // Intentamos enviar el mensaje al canal donde se usó el comando
+        // Enviar al canal actual
         await interaction.channel.send({ embeds: [verifyEmbed], components: [row] });
 
-        // Respondemos solo a vos para confirmar
+        // Confirmación oculta
         await interaction.reply({ content: "✅ Sistema de verificación enviado.", ephemeral: true });
     },
 };
