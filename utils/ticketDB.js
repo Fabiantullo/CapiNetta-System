@@ -97,6 +97,16 @@ async function updateTicketChannel(ticketId, channelId) {
     }
 }
 
+async function assignTicket(channelId, staffId) {
+    try {
+        await pool.query('UPDATE tickets SET claimedBy = ? WHERE channelId = ?', [staffId, channelId]);
+        return true;
+    } catch (e) {
+        console.error("Error assigning ticket:", e);
+        return false;
+    }
+}
+
 async function closeTicketDB(channelId) {
     try {
         await pool.query('UPDATE tickets SET status = "closed" WHERE channelId = ?', [channelId]);
@@ -122,6 +132,7 @@ module.exports = {
     getCategoryByName,
     createTicketDB,
     updateTicketChannel,
+    assignTicket,
     closeTicketDB,
     getTicketByChannel
 };

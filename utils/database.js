@@ -87,6 +87,7 @@ const initDB = async () => {
                 channelId VARCHAR(25),
                 status VARCHAR(20) DEFAULT 'open',
                 type VARCHAR(100),
+                claimedBy VARCHAR(25) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `;
@@ -96,6 +97,7 @@ const initDB = async () => {
         // Migraciones:
         try { await pool.query("ALTER TABLE guild_settings ADD COLUMN ticketLogsChannel VARCHAR(25)"); } catch (e) { }
         try { await pool.query("ALTER TABLE ticket_categories MODIFY COLUMN roleId TEXT"); } catch (e) { }
+        try { await pool.query("ALTER TABLE tickets ADD COLUMN claimedBy VARCHAR(25) DEFAULT NULL"); } catch (e) { }
 
         await pool.query(warnsTable);
         await pool.query(activityTable);
