@@ -95,13 +95,18 @@ module.exports = {
             // Usaremos el executor de este lote si no tenemos uno guardado
             let executorText = "Desconocido";
             if (!session.executor) {
-                const logs = await newM.guild.fetchAuditLogs({ limit: 5, type: AuditLogEvent.MemberRoleUpdate }).catch(err => {
-                    logError(client, err, "Fetch Role Audit Log");
-                    return null;
-                });
-                const logEntry = logs?.entries.find(e => e.target.id === newM.id && e.createdTimestamp > (Date.now() - 20000));
-                if (logEntry?.executor) {
-                    session.executor = logEntry.executor;
+                // Si el servidor no está disponible o el bot no está dentro, salimos sin crashear
+                if (!newM.guild || !newM.guild.available) return;
+
+                try {
+                    const logs = await newM.guild.fetchAuditLogs({ limit: 5, type: AuditLogEvent.MemberRoleUpdate });
+                    const logEntry = logs?.entries.find(e => e.target.id === newM.id && e.createdTimestamp > (Date.now() - 20000));
+                    if (logEntry?.executor) {
+                        session.executor = logEntry.executor;
+                    }
+                } catch (err) {
+                    // Atrapamos el error "Unknown Guild" o "Missing Permissions"
+                    console.error("⚠️ Error accediendo al Audit Log de " + newM.guild.name + ":", err.message);
                 }
             }
 
