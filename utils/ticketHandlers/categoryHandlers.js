@@ -7,7 +7,7 @@ const { EmbedBuilder, MessageFlags } = require('discord.js');
 const {
     addTicketCategory, removeTicketCategory, getTicketCategories,
     addRoleToCategory, updateTicketCategory
-} = require('../../ticketDB'); // Ajuste de path
+} = require('../ticketDB');
 
 async function handleAddCategory(interaction) {
     const name = interaction.options.getString('nombre');

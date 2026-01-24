@@ -4,7 +4,7 @@
  */
 
 const { EmbedBuilder, MessageFlags } = require('discord.js');
-const { getTicketMetrics } = require('../../ticketDB'); // Ajuste path
+const { getTicketMetrics } = require('../ticketDB');
 
 async function handleMetrics(interaction) {
     const metrics = await getTicketMetrics(interaction.guild.id);

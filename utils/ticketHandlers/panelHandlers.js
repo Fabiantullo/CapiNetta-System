@@ -4,7 +4,7 @@
  */
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } = require('discord.js');
-const { getTicketCategories } = require('../../ticketDB'); // Ajuste path
+const { getTicketCategories } = require('../ticketDB');
 
 async function handleSendPanel(interaction) {
     const categories = await getTicketCategories(interaction.guild.id);
