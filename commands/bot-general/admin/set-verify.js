@@ -8,7 +8,7 @@ const { logError } = require('../../../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('setup')
+        .setName('set-verify')
         .setDescription('Asistente interactivo para configurar el servidor')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
