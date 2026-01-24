@@ -60,18 +60,23 @@ async function getGuildSettings(guildId) {
 }
 
 async function updateGuildSettings(guildId, data) {
-    const keys = Object.keys(data);
+    const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
+    );
+
+    const keys = Object.keys(cleanData);
     if (keys.length === 0) return;
+
     const setClause = keys.map(key => `${key} = ?`).join(', ');
-    const values = [...Object.values(data), guildId];
+    const values = [...Object.values(cleanData), guildId];
 
     const sql = `UPDATE guild_settings SET ${setClause} WHERE guildId = ?`;
 
     try {
         await pool.query(sql, values);
-    } catch (error) {
-        console.error("Error crítico al actualizar MariaDB:", error);
-        throw error;
+    } catch (err) {
+        console.error("Error crítico en MariaDB Update:", err);
+        throw err;
     }
 }
 

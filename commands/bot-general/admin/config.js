@@ -1,4 +1,3 @@
-//
 const {
     SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits,
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -10,58 +9,82 @@ const { getGuildSettings, updateGuildSettings } = require('../../../utils/dataHa
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('config')
-        .setDescription('Panel Maestro: Gestión segura de MariaDB')
+        .setDescription('Panel Maestro Integral: Gestión total de Capi Netta RP')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         const { guild } = interaction;
         let selectedField = null;
 
-        async function renderPanel() {
+        async function renderFullPanel() {
             const s = await getGuildSettings(guild.id);
             const embed = new EmbedBuilder()
                 .setTitle(`⚙️ Centro de Mandos | ${guild.name}`)
-                .setDescription(`Configuración viva. \n**Sistema:** ${s?.isSetup ? '🟢 Operativo' : '🔴 Error de Datos'}`)
-                .setColor(s?.isSetup ? 0x2ecc71 : 0xff0000)
+                .setDescription(`Configuración viva en **MariaDB**. \n**Sistema:** ${s?.isSetup ? '🟢 Operativo' : '🔴 Configuración Pendiente'}`)
+                .setColor(s?.isSetup ? 0x2ecc71 : 0xf1c40f)
+                .setThumbnail(guild.iconURL({ dynamic: true }))
                 .addFields(
-                    { name: '📡 Canales', value: `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}\n> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}\n> **Verif:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`, inline: true },
-                    { name: '🎭 Roles', value: `> **User:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}\n> **No-Verif:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}\n> **Mute:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`, inline: true },
-                    { name: '🚀 Módulos', value: `**Bienvenida:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}>` : '🔘 OFF'}\n**Soporte:** ${s?.supportChannel ? `<#${s.supportChannel}>` : '🔘 OFF'}`, inline: false }
-                );
+                    {
+                        name: '📡 Canales de Sistema', value: [
+                            `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}`,
+                            `> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}`,
+                            `> **Verificación:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`
+                        ].join('\n'), inline: true
+                    },
+                    {
+                        name: '🎭 Gestión de Roles', value: [
+                            `> **Usuario:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}`,
+                            `> **Sin Verificar:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}`,
+                            `> **Muteado:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`
+                        ].join('\n'), inline: true
+                    },
+                    {
+                        name: '🚀 Módulos Especializados', value: [
+                            `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *Desactivado*'}`,
+                            `**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *Desactivado*'}`
+                        ].join('\n'), inline: false
+                    }
+                )
+                .setFooter({ text: "Capi Netta System • Gestión de Alta Eficiencia" });
 
             const menu = new ActionRowBuilder().addComponents(
-                new StringSelectMenuBuilder().setCustomId('cat_select').setPlaceholder('Elegí qué sección editar...').addOptions([
-                    { label: 'Canales', value: 'cat_channels', emoji: '📡' },
-                    { label: 'Roles', value: 'cat_roles', emoji: '🎭' },
-                    { label: 'Módulos', value: 'cat_modules', emoji: '🚀' }
+                new StringSelectMenuBuilder().setCustomId('cat_select').setPlaceholder('🎯 Elegí qué sección editar...').addOptions([
+                    { label: 'Canales de Sistema', value: 'cat_channels', emoji: '📡' },
+                    { label: 'Gestión de Roles', value: 'cat_roles', emoji: '🎭' },
+                    { label: 'Módulos Avanzados', value: 'cat_modules', emoji: '🚀' }
                 ])
             );
 
             const buttons = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('refresh').setLabel('🔄').setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('close').setLabel('Cerrar Panel').setStyle(ButtonStyle.Danger)
+                new ButtonBuilder().setCustomId('close_panel').setLabel('Cerrar Panel').setStyle(ButtonStyle.Danger)
             );
 
             return { embeds: [embed], components: [menu, buttons], content: null };
         }
 
-        const response = await interaction.reply({ ...(await renderPanel()), flags: [MessageFlags.Ephemeral] });
+        const response = await interaction.reply({ ...(await renderFullPanel()), flags: [MessageFlags.Ephemeral] });
         const collector = response.createMessageComponentCollector({ time: 600000 });
 
         collector.on('collect', async i => {
-            if (i.customId === 'close') {
+            // FIX CERRAR: Borra el efímero o lo limpia si falla
+            if (i.customId === 'close_panel') {
                 try { await interaction.deleteReply(); }
                 catch (e) { await interaction.editReply({ content: 'Panel cerrado.', embeds: [], components: [] }); }
                 return;
             }
 
-            if (i.customId === 'refresh') return i.update(await renderPanel());
+            if (i.customId === 'refresh') return i.update(await renderFullPanel());
 
             if (i.customId === 'cat_select') {
                 const cat = i.values[0];
-                const opts = cat === 'cat_channels' ? [{ label: 'Logs', value: 'logsChannel' }, { label: 'Debug', value: 'debugChannel' }, { label: 'Verif', value: 'verifyChannel' }] :
-                    cat === 'cat_roles' ? [{ label: 'User', value: 'roleUser' }, { label: 'No-Verif', value: 'roleNoVerify' }, { label: 'Mute', value: 'roleMuted' }] :
-                        [{ label: 'Bienvenida', value: 'welcomeChannel' }, { label: 'Soporte', value: 'supportChannel' }];
+                const opts = cat === 'cat_channels' ? [
+                    { label: 'Logs', value: 'logsChannel' }, { label: 'Debug', value: 'debugChannel' }, { label: 'Verif', value: 'verifyChannel' }
+                ] : cat === 'cat_roles' ? [
+                    { label: 'User', value: 'roleUser' }, { label: 'No-Verif', value: 'roleNoVerify' }, { label: 'Mute', value: 'roleMuted' }
+                ] : [
+                    { label: 'Bienvenida', value: 'welcomeChannel' }, { label: 'Soporte', value: 'supportChannel' }
+                ];
 
                 const sub = new ActionRowBuilder().addComponents(
                     new StringSelectMenuBuilder().setCustomId('field_select').setPlaceholder('¿Qué campo querés cambiar?').addOptions(opts)
@@ -75,16 +98,17 @@ module.exports = {
                     selectedField.startsWith('role') ? new RoleSelectMenuBuilder().setCustomId('save')
                         : new ChannelSelectMenuBuilder().setCustomId('save').addChannelTypes(ChannelType.GuildText)
                 );
-                return i.update({ content: `Seleccioná el nuevo valor para **${selectedField}**`, components: [selector] });
+                return i.update({ content: `🛠️ Seleccioná el nuevo valor para **${selectedField}**`, components: [selector] });
             }
 
             if (i.customId === 'save') {
                 await i.update({ content: `💾 Guardando en MariaDB...`, components: [] });
 
+                // GUARDADO QUIRÚRGICO: Solo toca el campo elegido
                 await updateGuildSettings(guild.id, { [selectedField]: i.values[0] });
 
                 setTimeout(async () => {
-                    await interaction.editReply(await renderPanel());
+                    await interaction.editReply(await renderFullPanel());
                 }, 1000);
             }
         });
