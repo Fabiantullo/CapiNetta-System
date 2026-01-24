@@ -231,8 +231,7 @@ module.exports = {
                 .setColor(0x3498db);
             return interaction.reply({ embeds: [embed], ephemeral: true });
 
-            const embed = new EmbedBuilder().setTitle("📂 Categorías de Tickets").setDescription(list).setColor(0x3498db);
-            return interaction.reply({ embeds: [embed], ephemeral: true });
+
         }
 
         // 6. ENVIAR PANEL (Grid de Botones)
