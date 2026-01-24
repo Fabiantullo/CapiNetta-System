@@ -18,15 +18,42 @@ module.exports = {
                 .setMinValue(1)
                 .setMaxValue(100)
         )
+        .addUserOption(opt =>
+            opt.setName('usuario')
+                .setDescription('Filtrar mensajes de un usuario específico')
+                .setRequired(false)
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction) {
         const amount = interaction.options.getInteger('cantidad');
+        const targetUser = interaction.options.getUser('usuario');
+        const channel = interaction.channel;
 
-        // bulkDelete retorna una colección con los mensajes borrados
-        const deleted = await interaction.channel.bulkDelete(amount, true).catch(() => null);
+        let deletedSize = 0;
 
-        if (!deleted || deleted.size === 0) {
+        if (targetUser) {
+            // Modo Filtrado: Buscamos en los últimos 100 mensajes
+            const messages = await channel.messages.fetch({ limit: 100 });
+            const userMessages = messages.filter(m => m.author.id === targetUser.id).first(amount);
+
+            if (userMessages.length === 0) {
+                return interaction.reply({
+                    content: `⚠️ No encontré mensajes recientes de **${targetUser.tag}** para borrar.`,
+                    flags: [MessageFlags.Ephemeral]
+                });
+            }
+
+            const deleted = await channel.bulkDelete(userMessages, true).catch(() => null);
+            deletedSize = deleted ? deleted.size : 0;
+
+        } else {
+            // Modo Normal: Borrado a granel
+            const deleted = await channel.bulkDelete(amount, true).catch(() => null);
+            deletedSize = deleted ? deleted.size : 0;
+        }
+
+        if (deletedSize === 0) {
             return interaction.reply({
                 content: '❌ No se pudieron borrar mensajes. Probablemente sean antiguos (>14 días) o no tenga permisos.',
                 flags: [MessageFlags.Ephemeral]
@@ -34,13 +61,21 @@ module.exports = {
         }
 
         // Respuesta efímera al admin
-        await interaction.reply({ content: `🧹 Se eliminaron **${deleted.size}** mensajes exitosamente.`, flags: [MessageFlags.Ephemeral] });
+        const confirmationMsg = targetUser
+            ? `🧹 Se eliminaron **${deletedSize}** mensajes de **${targetUser.tag}**.`
+            : `🧹 Se eliminaron **${deletedSize}** mensajes exitosamente.`;
+
+        await interaction.reply({ content: confirmationMsg, flags: [MessageFlags.Ephemeral] });
 
         // Log de Auditoría
+        const logDetail = targetUser
+            ? `de ${targetUser.tag}`
+            : `(Bulk)`;
+
         sendLog(
             interaction.client,
             interaction.user,
-            `🧹 **LIMPIEZA**: ${interaction.user.tag} eliminó ${deleted.size} mensajes en el canal <#${interaction.channel.id}>`,
+            `🧹 **LIMPIEZA**: ${interaction.user.tag} eliminó ${deletedSize} mensajes ${logDetail} en <#${channel.id}>`,
             interaction.guild.id
         );
     },

@@ -14,7 +14,8 @@ module.exports = {
         minAccountDays: 7,
         minVerifyMinutes: 1,
         spamLimit: 5,
-        spamInterval: 5000
+        spamInterval: 5000,
+        warnTimeoutMinutes: 10
     },
     database: {
         host: process.env.DB_HOST || 'localhost',

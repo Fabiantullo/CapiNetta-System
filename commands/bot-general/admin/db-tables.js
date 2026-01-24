@@ -5,7 +5,7 @@
  */
 
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const pool = require('../../../utils/database');
+const { pool } = require('../../../utils/database');
 
 module.exports = {
     data: new SlashCommandBuilder()

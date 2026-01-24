@@ -6,7 +6,7 @@
  * @module Utils/DataHandler
  */
 
-const pool = require('./database');
+const { pool } = require('./database');
 
 // =============================================================================
 //                             GESTIÓN DE ROLES (Persistencia)

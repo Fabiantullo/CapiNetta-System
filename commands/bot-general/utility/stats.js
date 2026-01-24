@@ -12,7 +12,7 @@ const {
 } = require('discord.js');
 const os = require('os');
 const { execSync } = require('child_process');
-const pool = require('../../../utils/database');
+const { pool } = require('../../../utils/database');
 
 /**
  * Genera una barra de progreso visual ASCII.

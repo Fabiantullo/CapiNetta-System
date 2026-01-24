@@ -5,7 +5,7 @@
  * Usa connection pool de mysql2.
  */
 
-const pool = require('./database');
+const { pool } = require('./database');
 
 // =============================================================================
 //                             GESTIÓN DE CATEGORÍAS

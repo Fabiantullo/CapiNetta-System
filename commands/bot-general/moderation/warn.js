@@ -7,6 +7,7 @@
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const config = require('../../../config');
 const { saveWarnToDB, addWarnLog } = require('../../../utils/dataHandler');
 
 module.exports = {
@@ -22,11 +23,20 @@ module.exports = {
         const reason = interaction.options.getString('razon') || 'Sin razón específica';
         const moderator = interaction.user;
 
+        // 0. Validaciones de Seguridad y Lógica
+        if (user.id === interaction.user.id) {
+            return interaction.reply({ content: '❌ No puedes advertirte a ti mismo.', flags: [MessageFlags.Ephemeral] });
+        }
+
+        if (user.bot) {
+            return interaction.reply({ content: '❌ No puedes advertir a un bot.', flags: [MessageFlags.Ephemeral] });
+        }
+
         // Fetch del miembro para poder aplicar timeouts
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
-        if (!member || user.bot) {
-            return interaction.reply({ content: '❌ Usuario no válido o es un bot.', flags: [MessageFlags.Ephemeral] });
+        if (!member) {
+            return interaction.reply({ content: '❌ Usuario no encontrado en el servidor.', flags: [MessageFlags.Ephemeral] });
         }
 
         const { client } = interaction;
@@ -53,10 +63,11 @@ module.exports = {
             // Nivel Crítico (3+): Timeout Automático
             if (member.moderatable) {
                 try {
-                    // Timeout de 10 minutos
-                    await member.timeout(10 * 60 * 1000, `Acumulación de 3 Warns. Última: ${reason}`);
+                    // Timeout Configurable
+                    const timeoutDuration = config.general.warnTimeoutMinutes || 10;
+                    await member.timeout(timeoutDuration * 60 * 1000, `Acumulación de 3 Warns. Última: ${reason}`);
 
-                    await interaction.reply(`🔇 **${user.tag}** alcanzó 3 advertencias y fue silenciado temporalmente (10 min).`);
+                    await interaction.reply(`🔇 **${user.tag}** alcanzó 3 advertencias y fue silenciado temporalmente (${timeoutDuration} min).`);
 
                     // Resetear contador tras castigo cumplido (estrategia opcional)
                     client.warnMap.set(user.id, 0);

@@ -21,7 +21,7 @@ const config = require("../config").general;
  */
 async function sendLog(client, user, text, guildId, messageToEdit = null) {
     if (!guildId) return;
-    const pool = require("./database"); // Require on-demand para evitar ciclos
+    const { pool } = require("./database"); // Require on-demand para evitar ciclos
     try {
         // 1. Guardar en DB para historial permanente
         await pool.query(
