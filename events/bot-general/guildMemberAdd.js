@@ -3,7 +3,6 @@ const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
 const { getGuildSettings } = require("../../utils/dataHandler");
 
-// Asegurate de que la fuente .otf o .ttf esté ahí
 registerFont(path.join(__dirname, '../../assets/fonts/pricedown.otf'), { family: 'GTA' });
 
 module.exports = {
@@ -12,63 +11,74 @@ module.exports = {
         const settings = await getGuildSettings(member.guild.id);
         if (!settings || !settings.welcomeChannel) return;
 
-        // Lienzo rectangular de 1024x450
+        // Mantenemos 1024x450 que es el tamaño estándar de banner en Discord
         const canvas = createCanvas(1024, 450);
         const ctx = canvas.getContext('2d');
 
         try {
-            // --- PASO CLAVE PARA ELIMINAR BORDES GRISES ---
-            // Pintamos todo el fondo de negro sólido primero
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // ----------------------------------------------
-
-            // 1. Cargar y dibujar el fondo de la ciudad (ocupa TODO el rectángulo)
             const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
-            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-            // 2. Capa de oscurecimiento degradada (rectangular)
+            // --- LÓGICA DE RECORTE (CROP) PARA OCUPAR EL 100% ---
+            // Esto elimina los bordes blancos de tu hero-bg.png y centra la ciudad
+            const imgAspect = background.width / background.height;
+            const canvasAspect = canvas.width / canvas.height;
+
+            let sX, sY, sWidth, sHeight;
+
+            if (imgAspect > canvasAspect) {
+                sHeight = background.height;
+                sWidth = sHeight * canvasAspect;
+                sX = (background.width - sWidth) / 2;
+                sY = 0;
+            } else {
+                sWidth = background.width;
+                sHeight = sWidth / canvasAspect;
+                sX = 0;
+                sY = (background.height - sHeight) / 2;
+            }
+
+            // Dibujamos solo la parte de la ciudad, estirándola al 100% del lienzo
+            ctx.drawImage(background, sX, sY, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+            // ---------------------------------------------------
+
+            // Capa de oscurecimiento para que el texto resalte (100% del ancho)
             const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
             gradient.addColorStop(0, 'rgba(0,0,0,0.8)');
-            gradient.addColorStop(1, 'rgba(0,0,0,0.1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0.2)');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 3. Avatar Circular con Neón
+            // Avatar, Textos y Sombras (Igual que antes, pero ahora sobre fondo 100%)
             ctx.save();
             ctx.beginPath();
             ctx.arc(200, 225, 130, 0, Math.PI * 2, true);
             ctx.lineWidth = 8;
-            ctx.strokeStyle = '#3498db'; // Azul Capi Netta
+            ctx.strokeStyle = '#3498db';
             ctx.stroke();
             ctx.clip();
             const avatar = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 512 }));
             ctx.drawImage(avatar, 70, 95, 260, 260);
             ctx.restore();
 
-            // 4. Textos estilo GTA (con Sombra)
             ctx.shadowColor = "black";
             ctx.shadowBlur = 10;
             ctx.textAlign = "left";
 
-            // Título Blanco
             ctx.fillStyle = '#ffffff';
-            ctx.font = '45px "GTA"';
-            ctx.fillText('¡BIENVENIDO/A A LA CIUDAD!', 380, 180);
+            ctx.font = '40px "GTA"';
+            ctx.fillText('¡BIENVENIDO/A A LA CIUDAD!', 380, 160);
 
-            // Nombre de Usuario Azul
             ctx.fillStyle = '#3498db';
             ctx.font = '90px "GTA"';
             ctx.fillText(member.user.username.toUpperCase(), 380, 280);
 
-            // Contador Gris
             ctx.fillStyle = '#aaaaaa';
             ctx.font = '28px "GTA"';
             ctx.fillText(`Sos nuestro ciudadano número #${member.guild.memberCount}`, 380, 360);
 
-            // 5. Envío
             const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'bienvenida-capi.png' });
             const channel = await member.guild.channels.fetch(settings.welcomeChannel);
+
             if (channel) {
                 await channel.send({
                     content: `🎉 **${member.user.username}**, ¡ya sos parte de la familia de **${member.guild.name}**!`,
