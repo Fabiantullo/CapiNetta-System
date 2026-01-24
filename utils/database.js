@@ -49,6 +49,16 @@ const initDB = async () => {
                 isSetup BOOLEAN DEFAULT FALSE
             )
         `;
+        const activityTable = `
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(25),
+                userId VARCHAR(25),
+                action TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+`;
+        await pool.query(activityTable);
         await pool.query(guildSettingsTable);
         console.log("✅ Tabla de configuración de servidores lista.");
 

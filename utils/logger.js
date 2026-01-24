@@ -9,6 +9,13 @@ const config = require("../config").general;
  */
 async function sendLog(client, user, text, guildId, messageToEdit = null) {
     if (!guildId) return;
+    const pool = require("./database");
+    try {
+        await pool.query(
+            'INSERT INTO activity_logs (guildId, userId, action) VALUES (?, ?, ?)',
+            [guildId, user.id, text.substring(0, 500)]
+        );
+    } catch (e) { console.error("Error guardando actividad:", e); }
 
     try {
         const { getGuildSettings } = require("./dataHandler");
