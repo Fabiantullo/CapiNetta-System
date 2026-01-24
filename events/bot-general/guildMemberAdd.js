@@ -24,13 +24,6 @@ module.exports = {
             const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
             ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-            // 2. Capa de oscurecimiento degradada (rectangular)
-            const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
-            gradient.addColorStop(0, 'rgba(0,0,0,0.8)');
-            gradient.addColorStop(1, 'rgba(0,0,0,0.1)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             // 3. Avatar Circular con Neón (El único elemento redondo)
             ctx.save(); // Guardamos el estado rectangular
             ctx.beginPath();
