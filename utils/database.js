@@ -132,12 +132,7 @@ const initDB = async () => {
         // Ejecución Secuencial
         await pool.query(guildSettingsTable);
 
-        // Migraciones de columnas (ALTER TABLE seguros)
-        try { await pool.query("ALTER TABLE guild_settings ADD COLUMN ticketLogsChannel VARCHAR(25)"); } catch (e) { }
-        try { await pool.query("ALTER TABLE ticket_categories MODIFY COLUMN roleId TEXT"); } catch (e) { }
-        try { await pool.query("ALTER TABLE tickets ADD COLUMN claimedBy VARCHAR(25) DEFAULT NULL"); } catch (e) { }
-        try { await pool.query("ALTER TABLE tickets ADD COLUMN lastActivity TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); } catch (e) { }
-
+        // Tablas principales
         await pool.query(warnsTable);
         await pool.query(activityTable);
         await pool.query(warnLogsTable);
@@ -146,13 +141,7 @@ const initDB = async () => {
         await pool.query(ticketsTable);
         await pool.query(ticketActionsTable);
 
-        await pool.query(ticketsTable);
-        await pool.query(ticketActionsTable);
-
-        // Verificación de tablas creadas
-        const [tables] = await pool.query("SHOW TABLES");
-        const tableNames = tables.map(t => Object.values(t)[0]);
-        console.log("✅ Tablas de MariaDB preparadas y sincronizadas. Tablas actuales:", tableNames.join(", "));
+        console.log("✅ Tablas de MariaDB preparadas y sincronizadas.");
     } catch (err) {
         console.error("❌ Error inicializando MariaDB:", err);
     }
