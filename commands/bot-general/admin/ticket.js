@@ -5,7 +5,7 @@
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, AttachmentBuilder } = require('discord.js');
-const { addTicketCategory, removeTicketCategory, getTicketCategories, addRoleToCategory } = require('../../../utils/ticketDB');
+const { addTicketCategory, removeTicketCategory, getTicketCategories, addRoleToCategory, updateTicketCategory } = require('../../../utils/ticketDB');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -31,6 +31,18 @@ module.exports = {
                 .setDescription('Agregar un rol EXTRA para ver tickets de una categoría')
                 .addStringOption(opt => opt.setName('categoria').setDescription('Nombre exacto de la categoría').setRequired(true))
                 .addRoleOption(opt => opt.setName('rol').setDescription('Rol extra a añadir').setRequired(true))
+        )
+        .addSubcommand(sub =>
+            sub.setName('edit')
+                .setDescription('Modificar una categoría existente')
+                .addStringOption(opt => opt.setName('nombre_actual').setDescription('Nombre actual de la categoría a editar').setRequired(true))
+                .addStringOption(opt => opt.setName('nuevo_nombre').setDescription('Nuevo nombre (Opcional)'))
+                .addStringOption(opt => opt.setName('nuevo_descripcion').setDescription('Nueva descripción (Opcional)'))
+                .addStringOption(opt => opt.setName('nuevo_emoji').setDescription('Nuevo emoji (Opcional)'))
+                .addRoleOption(opt => opt.setName('nuevo_rol').setDescription('Nuevo rol principal (Reemplaza la lista anterior)').setRequired(false))
+                .addRoleOption(opt => opt.setName('nuevo_rol_extra_1').setDescription('Nuevo rol extra 1').setRequired(false))
+                .addRoleOption(opt => opt.setName('nuevo_rol_extra_2').setDescription('Nuevo rol extra 2').setRequired(false))
+                .addChannelOption(opt => opt.setName('nueva_categoria').setDescription('Nueva categoría de Discord destino').addChannelTypes(ChannelType.GuildCategory))
         )
         .addSubcommand(sub =>
             sub.setName('remove')
@@ -113,6 +125,68 @@ module.exports = {
                 return interaction.reply({ content: `✅ Rol **${role.name}** agregado a la categoría **${name}**.`, ephemeral: true });
             } else {
                 return interaction.reply({ content: `❌ No se encontró la categoría o hubo un error DB.`, ephemeral: true });
+            }
+        }
+
+        // 3.5. EDITAR CATEGORÍA
+        if (sub === 'edit') {
+            const currentName = interaction.options.getString('nombre_actual');
+            const newName = interaction.options.getString('nuevo_nombre');
+            const newDesc = interaction.options.getString('nuevo_descripcion');
+            const newEmoji = interaction.options.getString('nuevo_emoji');
+
+            const newRole = interaction.options.getRole('nuevo_rol');
+            const newRole2 = interaction.options.getRole('nuevo_rol_extra_1');
+            const newRole3 = interaction.options.getRole('nuevo_rol_extra_2');
+
+            const newCat = interaction.options.getChannel('nueva_categoria');
+
+            const updates = {};
+            if (newName) updates.newName = newName;
+            if (newDesc) updates.description = newDesc;
+            if (newEmoji) updates.emoji = newEmoji;
+            if (newCat) updates.targetCategoryId = newCat.id;
+
+            // Lógica de Roles en Edit
+            if (newRole || newRole2 || newRole3) {
+                // Si el usuario especifica roles nuevos, REEMPLAZAMOS la lista anterior.
+                // Asumimos que "Edit" es una acción completa para la propiedad roles.
+                // Si solo pone newRole, la lista pasa a ser [newRole].
+                // Si pone newRole + newRole2, pasa a ser [newRole, newRole2].
+
+                let newRolesList = [];
+                if (newRole) newRolesList.push(newRole.id);
+                if (newRole2) newRolesList.push(newRole2.id);
+                if (newRole3) newRolesList.push(newRole3.id);
+
+                if (newRolesList.length > 0) {
+                    updates.roleId = newRolesList.length > 1 ? JSON.stringify(newRolesList) : newRolesList[0];
+                }
+            }
+
+            if (Object.keys(updates).length === 0) {
+                return interaction.reply({ content: "⚠️ No especificaste ningún cambio.", ephemeral: true });
+            }
+
+            const success = await updateTicketCategory(guildId, currentName, updates);
+
+            if (success) {
+                const changes = [];
+                if (newName) changes.push(`Nombre: **${newName}**`);
+                if (newDesc) changes.push(`Desc: *${newDesc}*`);
+                if (newEmoji) changes.push(`Emoji: ${newEmoji}`);
+
+                if (updates.roleId) {
+                    // Reconstruimos visualmente
+                    let displayRoles = updates.roleId.startsWith('[') ? JSON.parse(updates.roleId) : [updates.roleId];
+                    changes.push(`Roles: ${displayRoles.map(id => `<@&${id}>`).join(', ')} (Lista Actualizada)`);
+                }
+
+                if (newCat) changes.push(`Destino: ${newCat}`);
+
+                return interaction.reply({ content: `✅ Categoría **${currentName}** actualizada.\n> ${changes.join('\n> ')}`, ephemeral: true });
+            } else {
+                return interaction.reply({ content: `❌ No se encontró la categoría **${currentName}** o hubo un error.`, ephemeral: true });
             }
         }
 

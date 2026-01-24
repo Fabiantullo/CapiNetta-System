@@ -45,6 +45,52 @@ async function removeTicketCategory(guildId, name) {
 }
 
 /**
+ * Actualiza una categoría existente.
+ * Soporta cambios parciales (solo lo que venga definido en data).
+ */
+async function updateTicketCategory(guildId, currentName, data) {
+    try {
+        const fields = [];
+        const params = [];
+
+        if (data.newName) {
+            fields.push('name = ?');
+            params.push(data.newName);
+        }
+        if (data.description) {
+            fields.push('description = ?');
+            params.push(data.description);
+        }
+        if (data.emoji) {
+            fields.push('emoji = ?');
+            params.push(data.emoji);
+        }
+        if (data.roleId) {
+            fields.push('roleId = ?');
+            params.push(data.roleId);
+        }
+        if (data.targetCategoryId) {
+            fields.push('targetCategoryId = ?');
+            params.push(data.targetCategoryId);
+        }
+
+        if (fields.length === 0) return false;
+
+        // Añadimos WHERE al final
+        params.push(guildId, currentName);
+
+        await pool.query(
+            `UPDATE ticket_categories SET ${fields.join(', ')} WHERE guildId = ? AND name = ?`,
+            params
+        );
+        return true;
+    } catch (e) {
+        console.error("Error updating ticket category:", e);
+        return false;
+    }
+}
+
+/**
  * Añade un rol adicional a la lista de permitidos de una categoría.
  * Maneja la conversión de String simple a JSON Array si es necesario.
  */
@@ -178,6 +224,7 @@ async function getTicketByChannel(channelId) {
 module.exports = {
     addTicketCategory,
     removeTicketCategory,
+    updateTicketCategory,
     addRoleToCategory,
     getTicketCategories,
     getCategoryByName,
