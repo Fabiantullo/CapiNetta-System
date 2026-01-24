@@ -24,7 +24,7 @@ async function handleAddCategory(interaction) {
 
     const roleIdField = roleIdsToSave.length > 1 ? JSON.stringify(roleIdsToSave) : role.id;
 
-    const success = await addTicketCategory(interaction.guild.id, {
+    const result = await addTicketCategory(interaction.guild.id, {
         name,
         description: desc,
         emoji,
@@ -32,11 +32,11 @@ async function handleAddCategory(interaction) {
         targetCategoryId: parentCat.id
     });
 
-    if (success) {
+    if (result.success) {
         const roleNames = roleIdsToSave.map(id => `<@&${id}>`).join(', ');
         return interaction.reply({ content: `✅ Categoría **${name}** creada con éxito.\n> **Roles:** ${roleNames}\n> **Ubicación:** ${parentCat.name}`, flags: [MessageFlags.Ephemeral] });
     } else {
-        return interaction.reply({ content: `❌ Hubo un error al guardar la categoría.`, flags: [MessageFlags.Ephemeral] });
+        return interaction.reply({ content: result.message || `❌ Hubo un error al guardar la categoría.`, flags: [MessageFlags.Ephemeral] });
     }
 }
 

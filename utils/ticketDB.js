@@ -20,14 +20,21 @@ const { pool } = require('./database');
 async function addTicketCategory(guildId, data) {
     try {
         const { name, description, emoji, roleId, targetCategoryId } = data;
+
+        // Validar Duplicados
+        const exists = await getCategoryByName(guildId, name);
+        if (exists) {
+            return { success: false, message: '⚠️ Ya existe una categoría con ese nombre.' };
+        }
+
         await pool.query(
             'INSERT INTO ticket_categories (guildId, name, description, emoji, roleId, targetCategoryId) VALUES (?, ?, ?, ?, ?, ?)',
             [guildId, name, description, emoji, roleId, targetCategoryId]
         );
-        return true;
+        return { success: true };
     } catch (e) {
         console.error("Error creating ticket category:", e);
-        return false;
+        return { success: false, message: '❌ Error interno de base de datos.' };
     }
 }
 
