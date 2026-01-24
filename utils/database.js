@@ -1,29 +1,17 @@
 /**
  * @file database.js
- * @description Módulo de conexión a Base de Datos usando Prisma ORM.
- * Reemplaza la antigua implementación de mysql2.
+ * @description Instancia Singleton de Prisma Client.
  */
 
 const { PrismaClient } = require('@prisma/client');
 
-// Instancia única (Singleton) para evitar saturar conexiones
-// En desarrollo, evita múltiples instancias por Hot Reload
-const prisma = global.prisma || new PrismaClient();
+// Instancia global para evitar múltiples conexiones en desarrollo (hot-reload)
+const globalForPrisma = global;
 
-if (process.env.NODE_ENV !== 'production') {
-    global.prisma = prisma;
-}
+const prisma = globalForPrisma.prisma || new PrismaClient({
+    log: ['warn', 'error'], // Opcional: 'query' para ver SQL en consola
+});
 
-/**
- * Inicializa la conexión (opcional, Prisma conecta lazy, pero útil para validar al inicio).
- */
-const initDB = async () => {
-    try {
-        await prisma.$connect();
-        console.log("✅ Conexión a Prisma (MariaDB) establecida.");
-    } catch (err) {
-        console.error("❌ Error conectando Prisma:", err);
-    }
-};
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-module.exports = { prisma, initDB };
+module.exports = { prisma };
