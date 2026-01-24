@@ -54,6 +54,12 @@ async function deployForBot(botName, botConfig, commandsSubDir, isGlobal = false
 
         console.log(`🚀 Iniciando actualización de ${commands.length} comandos para [${botName}] (${isGlobal ? 'GLOBAL' : 'LOCAL'})...`);
 
+        // DEBUG: Check for duplicates
+        const names = commands.map(c => c.name);
+        console.log("Comandos a cargar:", names.join(', '));
+        const duplicates = names.filter((item, index) => names.indexOf(item) !== index);
+        if (duplicates.length > 0) console.error("🚨 DUPLICADOS DETECTADOS:", duplicates);
+
         await rest.put(route, { body: commands });
 
         console.log(`✅ Comandos de [${botName}] cargados exitosamente.`);
