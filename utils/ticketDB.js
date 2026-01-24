@@ -107,9 +107,22 @@ async function assignTicket(channelId, staffId) {
     }
 }
 
+async function logTicketActionDB(ticketId, action, executorId, targetId = null) {
+    try {
+        await pool.query(
+            'INSERT INTO ticket_actions (ticketId, action, executorId, targetId) VALUES (?, ?, ?, ?)',
+            [ticketId, action, executorId, targetId]
+        );
+        // Actualizar ultima actividad
+        await pool.query('UPDATE tickets SET lastActivity = NOW() WHERE ticketId = ?', [ticketId]);
+    } catch (e) {
+        console.error("Error logging ticket action DB:", e);
+    }
+}
+
 async function closeTicketDB(channelId) {
     try {
-        await pool.query('UPDATE tickets SET status = "closed" WHERE channelId = ?', [channelId]);
+        await pool.query('UPDATE tickets SET status = "closed", lastActivity = NOW() WHERE channelId = ?', [channelId]);
     } catch (e) {
         console.error("Error closing ticket in DB:", e);
     }
@@ -133,6 +146,7 @@ module.exports = {
     createTicketDB,
     updateTicketChannel,
     assignTicket,
+    logTicketActionDB,
     closeTicketDB,
     getTicketByChannel
 };
