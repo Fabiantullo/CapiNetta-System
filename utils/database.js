@@ -146,7 +146,13 @@ const initDB = async () => {
         await pool.query(ticketsTable);
         await pool.query(ticketActionsTable);
 
-        console.log("✅ Tablas de MariaDB preparadas y sincronizadas.");
+        await pool.query(ticketsTable);
+        await pool.query(ticketActionsTable);
+
+        // Verificación de tablas creadas
+        const [tables] = await pool.query("SHOW TABLES");
+        const tableNames = tables.map(t => Object.values(t)[0]);
+        console.log("✅ Tablas de MariaDB preparadas y sincronizadas. Tablas actuales:", tableNames.join(", "));
     } catch (err) {
         console.error("❌ Error inicializando MariaDB:", err);
     }
