@@ -1,96 +1,141 @@
 const {
     SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits,
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
-    StringSelectMenuBuilder, ComponentType, MessageFlags
+    StringSelectMenuBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder,
+    ComponentType, MessageFlags, ChannelType
 } = require('discord.js');
-const { getGuildSettings } = require('../../../utils/dataHandler');
+const { getGuildSettings, updateGuildSettings } = require('../../../utils/dataHandler');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('config')
-        .setDescription('Panel maestro de configuración: Gestioná canales, roles y módulos')
+        .setDescription('Dashboard Maestro: Edición en tiempo real de MariaDB')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         const { guild } = interaction;
+        let pendingUpdate = { field: null, category: null };
 
+        // 1. GENERADOR DE PANEL PRINCIPAL
         async function createMainPanel() {
             const s = await getGuildSettings(guild.id);
-            if (!s) return { content: "⚠️ No hay datos. Usá `/setup` por primera vez.", ephemeral: true };
-
             const embed = new EmbedBuilder()
                 .setTitle(`⚙️ Centro de Mandos | ${guild.name}`)
-                .setDescription(`Aquí podés ver y modificar toda la infraestructura del bot. \n**Estado del Sistema:** ${s.isSetup ? '🟢 Operativo' : '🟡 Configuración Pendiente'}`)
-                .setColor(s.isSetup ? 0x2ecc71 : 0xf1c40f)
+                .setDescription(`Configuración activa. \n**Sistema:** ${s?.isSetup ? '🟢 Operativo' : '🟡 Configuración Pendiente'}`)
+                .setColor(s?.isSetup ? 0x2ecc71 : 0xf1c40f)
                 .setThumbnail(guild.iconURL({ dynamic: true }))
                 .addFields(
                     {
-                        name: '📡 Canales Críticos', value: [
-                            `> **Logs:** ${s.logsChannel ? `<#${s.logsChannel}>` : '❌ *Sin asignar*'}`,
-                            `> **Debug:** ${s.debugChannel ? `<#${s.debugChannel}>` : '❌ *Sin asignar*'}`,
-                            `> **Verificación:** ${s.verifyChannel ? `<#${s.verifyChannel}>` : '❌ *Sin asignar*'}`
+                        name: '📡 Canales', value: [
+                            `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}`,
+                            `> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}`,
+                            `> **Verificación:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`
                         ].join('\n'), inline: true
                     },
                     {
-                        name: '🎭 Jerarquía de Roles', value: [
-                            `> **Verificado:** ${s.roleUser ? `<@&${s.roleUser}>` : '❌ *Sin asignar*'}`,
-                            `> **Sin Verificar:** ${s.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌ *Sin asignar*'}`,
-                            `> **Muteado:** ${s.roleMuted ? `<@&${s.roleMuted}>` : '❌ *Sin asignar*'}`
+                        name: '🎭 Roles', value: [
+                            `> **Usuario:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}`,
+                            `> **Sin Verificar:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}`,
+                            `> **Muteado:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`
                         ].join('\n'), inline: true
                     },
                     {
-                        name: '🚀 Módulos Especializados', value: [
-                            `**Welcome Canvas:** ${s.welcomeChannel ? `<#${s.welcomeChannel}> (Activo ✅)` : '🔘 *Desactivado*'}`,
-                            `**Soporte/Aislados:** ${s.supportChannel ? `<#${s.supportChannel}> (Activo ✅)` : '🔘 *Desactivado*'}`
+                        name: '🚀 Módulos', value: [
+                            `**Bienvenida:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *OFF*'}`,
+                            `**Soporte:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *OFF*'}`
                         ].join('\n'), inline: false
                     }
                 )
-                .setFooter({ text: `ID del Servidor: ${guild.id}` })
-                .setTimestamp();
+                .setFooter({ text: `ID: ${guild.id} • Capi Netta RP` });
 
-            // Menú para elegir qué editar directamente
             const menu = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
                     .setCustomId('edit_category')
-                    .setPlaceholder('🎯 ¿Qué sección querés modificar?')
+                    .setPlaceholder('🎯 Seleccioná qué sección editar...')
                     .addOptions([
-                        { label: 'Canales de Sistema', description: 'Logs, Debug y Verificación', value: 'cat_channels', emoji: '📡' },
-                        { label: 'Gestión de Roles', description: 'Usuario, No-Verificado y Mute', value: 'cat_roles', emoji: '🎭' },
-                        { label: 'Módulos Avanzados', description: 'Bienvenidas y Soporte', value: 'cat_modules', emoji: '🚀' },
+                        { label: 'Canales (Logs/Debug/Verif)', value: 'cat_channels', emoji: '📡' },
+                        { label: 'Roles (User/No-Verif/Mute)', value: 'cat_roles', emoji: '🎭' },
+                        { label: 'Módulos (Welcome/Support)', value: 'cat_modules', emoji: '🚀' },
                     ])
             );
 
             const buttons = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('refresh_config').setLabel('Refrescar Datos').setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
-                new ButtonBuilder().setCustomId('full_wizard').setLabel('Asistente Completo').setStyle(ButtonStyle.Primary).setEmoji('🪄')
+                new ButtonBuilder().setCustomId('refresh_config').setLabel('Refrescar').setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+                new ButtonBuilder().setCustomId('close_panel').setLabel('Cerrar').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            return { embeds: [embed], components: [menu, buttons], flags: [MessageFlags.Ephemeral] };
+            return { embeds: [embed], components: [menu, buttons] };
         }
 
-        const initialPanel = await createMainPanel();
-        const response = await interaction.reply(initialPanel);
-
-        const collector = response.createMessageComponentCollector({ time: 300000 });
+        const response = await interaction.reply({ ...(await createMainPanel()), flags: [MessageFlags.Ephemeral] });
+        const collector = response.createMessageComponentCollector({ time: 600000 });
 
         collector.on('collect', async i => {
-            if (i.customId === 'refresh_config') {
-                const refreshed = await createMainPanel();
-                return i.update(refreshed);
-            }
+            // REFRESCAR O CERRAR
+            if (i.customId === 'refresh_config') return i.update(await createMainPanel());
+            if (i.customId === 'close_panel') return i.deleteReply();
 
+            // PASO 1: SELECCIONAR CATEGORÍA
             if (i.customId === 'edit_category') {
-                const selection = i.values[0];
-                let msg = "";
-                if (selection === 'cat_channels') msg = "Has seleccionado **Canales**. Iniciando asistente de canales...";
-                if (selection === 'cat_roles') msg = "Has seleccionado **Roles**. Iniciando asistente de roles...";
-                if (selection === 'cat_modules') msg = "Has seleccionado **Módulos**. Iniciando configuración de Bienvenida/Soporte...";
+                const category = i.values[0];
+                let fieldOptions = [];
 
-                await i.reply({ content: `🛠️ **Modo Edición:** ${msg} \n*(Por ahora, usá /setup mientras termino de linkear las funciones directas)*`, flags: [MessageFlags.Ephemeral] });
+                if (category === 'cat_channels') {
+                    fieldOptions = [
+                        { label: 'Canal de Logs', value: 'logsChannel', emoji: '📄' },
+                        { label: 'Canal de Debug/Errores', value: 'debugChannel', emoji: '🛠️' },
+                        { label: 'Canal de Verificación', value: 'verifyChannel', emoji: '✅' }
+                    ];
+                } else if (category === 'cat_roles') {
+                    fieldOptions = [
+                        { label: 'Rol de Usuario', value: 'roleUser', emoji: '👤' },
+                        { label: 'Rol Sin Verificar', value: 'roleNoVerify', emoji: '🔘' },
+                        { label: 'Rol Muteado', value: 'roleMuted', emoji: '🔇' }
+                    ];
+                } else if (category === 'cat_modules') {
+                    fieldOptions = [
+                        { label: 'Canal de Bienvenida (Canvas)', value: 'welcomeChannel', emoji: '🎨' },
+                        { label: 'Canal de Soporte/Aislado', value: 'supportChannel', emoji: '💬' }
+                    ];
+                }
+
+                const fieldMenu = new ActionRowBuilder().addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId('select_field')
+                        .setPlaceholder('¿Específicamente qué campo querés cambiar?')
+                        .addOptions(fieldOptions)
+                );
+
+                return i.update({ content: `🛠️ **Paso 2:** Elegí el campo a modificar de esa sección.`, components: [fieldMenu] });
             }
 
-            if (i.customId === 'full_wizard') {
-                await i.reply({ content: "🚀 **Lanzando Asistente...** Por seguridad y orden, usá el comando `/setup` para iniciar el Wizard interactivo completo.", flags: [MessageFlags.Ephemeral] });
+            // PASO 2: SELECCIONAR CAMPO ESPECÍFICO
+            if (i.customId === 'select_field') {
+                pendingUpdate.field = i.values[0];
+                const isRole = pendingUpdate.field.startsWith('role');
+
+                const finalSelector = new ActionRowBuilder().addComponents(
+                    isRole ? new RoleSelectMenuBuilder().setCustomId('save_value').setPlaceholder(`Seleccioná el nuevo ROL para ${pendingUpdate.field}`)
+                        : new ChannelSelectMenuBuilder().setCustomId('save_value').setPlaceholder(`Seleccioná el nuevo CANAL para ${pendingUpdate.field}`).addChannelTypes(ChannelType.GuildText)
+                );
+
+                return i.update({ content: `📥 **Paso 3:** Seleccioná el nuevo valor para \`${pendingUpdate.field}\`.`, components: [finalSelector] });
+            }
+
+            // PASO 3: GUARDAR EN MARIADB Y REFRESCAR
+            if (i.customId === 'save_value') {
+                const newValue = i.values[0];
+                await i.update({ content: `💾 Guardando \`${pendingUpdate.field}\` en MariaDB...`, components: [] });
+
+                // Actualizamos la base de datos
+                const updateData = {};
+                updateData[pendingUpdate.field] = newValue;
+                await updateGuildSettings(guild.id, updateData);
+
+                // Esperamos un toque para que la DB procese y refrescamos el panel
+                setTimeout(async () => {
+                    await interaction.editReply({ content: null, ...(await createMainPanel()) });
+                }, 1000);
             }
         });
     },
