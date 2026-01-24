@@ -9,7 +9,6 @@ const {
     MessageFlags
 } = require('discord.js');
 const os = require('os');
-const { execSync } = require('child_process');
 const pool = require('../../../utils/database'); //
 
 /**
@@ -24,19 +23,19 @@ function createBar(percent, size = 10) {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('Panel visual de salud del sistema, actividad y errores')
+        .setDescription('Panel visual de salud del sistema, actividad y errores técnicos')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         const { client } = interaction;
 
-        // 1. CÁLCULOS DE HARDWARE
+        // 1. Cálculos de Hardware (CPU y RAM)
         const cpuUsage = ((os.loadavg()[0] / os.cpus().length) * 100).toFixed(1);
         const totalMem = (os.totalmem() / (1024 ** 3)).toFixed(2);
         const usedMem = ((os.totalmem() - os.freemem()) / (1024 ** 3)).toFixed(2);
         const memPerc = ((usedMem / totalMem) * 100).toFixed(1);
 
-        // 2. ESTADO DE BASE DE DATOS Y RED
+        // 2. Estado de la Base de Datos
         let dbStatus = "🔴 Desconectada";
         try {
             const start = Date.now();
@@ -44,19 +43,19 @@ module.exports = {
             dbStatus = `🟢 Online (${Date.now() - start}ms)`;
         } catch (e) { }
 
-        // 3. EMBED PRINCIPAL
+        // 3. Diseño del Embed Principal
         const statsEmbed = new EmbedBuilder()
             .setTitle('🖥️ Panel de Control | Capi Netta System')
             .setColor(0x2ecc71)
             .setThumbnail(client.user.displayAvatarURL())
             .addFields(
                 { name: '🌐 Global', value: `Servers: \`${client.guilds.cache.size}\` | Ping: \`${client.ws.ping}ms\`\nDB: ${dbStatus}`, inline: true },
-                { name: '⚙️ CPU & RAM', value: `CPU: ${createBar(cpuUsage)}\nRAM: ${createBar(memPerc)}\nTotal: \`${usedMem} / ${totalMem} GB\``, inline: true }
+                { name: '⚙️ CPU & RAM', value: `CPU: ${createBar(cpuUsage)}\nRAM: ${createBar(memPerc)}\nTotal: \`${usedMem}/${totalMem}GB\``, inline: true }
             )
-            .setFooter({ text: "Presioná los botones para ver el historial detallado." })
+            .setFooter({ text: "Usá los botones de abajo para ver el historial." })
             .setTimestamp();
 
-        // 4. BOTONES INTERACTIVOS
+        // 4. CREACIÓN DE LOS BOTONES
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('view_activity')
@@ -68,27 +67,28 @@ module.exports = {
                 .setStyle(ButtonStyle.Danger)
         );
 
+        // Enviamos la respuesta con los botones (components: [row])
         const response = await interaction.reply({
             embeds: [statsEmbed],
             components: [row],
             flags: [MessageFlags.Ephemeral]
         });
 
-        // 5. MANEJO DE CLICKS (COLLECTOR)
+        // 5. LÓGICA DE LOS BOTONES (COLLECTOR)
         const collector = response.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 120000 // 2 minutos activo
+            time: 60000
         });
 
         collector.on('collect', async i => {
-            // --- VISOR DE ACTIVIDAD (LOGS GENERALES) ---
+            // Acción para el botón de Actividad (Lee de activity_logs)
             if (i.customId === 'view_activity') {
                 const [rows] = await pool.query(
                     'SELECT action, timestamp FROM activity_logs WHERE guildId = ? ORDER BY timestamp DESC LIMIT 10',
                     [interaction.guild.id]
                 );
 
-                if (rows.length === 0) return i.reply({ content: "📭 No hay actividad registrada.", flags: [MessageFlags.Ephemeral] });
+                if (rows.length === 0) return i.reply({ content: "📭 No hay actividad registrada aún.", flags: [MessageFlags.Ephemeral] });
 
                 const feed = rows.map(r => `[<t:${Math.floor(r.timestamp / 1000)}:R>] ${r.action.replace(/\*/g, '')}`).join('\n');
 
@@ -100,7 +100,7 @@ module.exports = {
                 await i.reply({ embeds: [activityEmbed], flags: [MessageFlags.Ephemeral] });
             }
 
-            // --- VISOR DE ERRORES (DEBUG) ---
+            // Acción para el botón de Errores (Lee de system_errors)
             if (i.customId === 'view_errors') {
                 const [errors] = await pool.query('SELECT * FROM system_errors ORDER BY timestamp DESC LIMIT 10');
 

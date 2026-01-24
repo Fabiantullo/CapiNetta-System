@@ -14,27 +14,7 @@ const pool = mysql.createPool({
 
 const initDB = async () => {
     try {
-        // Tabla de estado actual (warns activos y roles de cuarentena)
-        const warnsTable = `
-            CREATE TABLE IF NOT EXISTS warns (
-                userId VARCHAR(25) PRIMARY KEY,
-                count INT DEFAULT 0,
-                roles TEXT DEFAULT NULL, 
-                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
-        `;
-
-        // Tabla histórica de logs (Auditoría)
-        const logsTable = `
-            CREATE TABLE IF NOT EXISTS warn_logs (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                userId VARCHAR(25),
-                moderatorId VARCHAR(25),
-                reason TEXT,
-                warnNumber INT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `;
+        // 1. Configuración de Servidores
         const guildSettingsTable = `
             CREATE TABLE IF NOT EXISTS guild_settings (
                 guildId VARCHAR(25) PRIMARY KEY,
@@ -49,6 +29,20 @@ const initDB = async () => {
                 isSetup BOOLEAN DEFAULT FALSE
             )
         `;
+
+        // 2. Estado de Usuarios (Warns y Roles)
+        const warnsTable = `
+            CREATE TABLE IF NOT EXISTS warns (
+                guildId VARCHAR(25),
+                userId VARCHAR(25),
+                count INT DEFAULT 0,
+                roles TEXT DEFAULT NULL, 
+                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (guildId, userId)
+            )
+        `;
+
+        // 3. Actividad General (Para el botón de Stats)
         const activityTable = `
             CREATE TABLE IF NOT EXISTS activity_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,13 +51,25 @@ const initDB = async () => {
                 action TEXT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-`;
-        await pool.query(activityTable);
-        await pool.query(guildSettingsTable);
-        console.log("✅ Tabla de configuración de servidores lista.");
+        `;
 
+        // 4. Fallos Técnicos (Para el botón de Stats)
+        const errorsTable = `
+            CREATE TABLE IF NOT EXISTS system_errors (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                context VARCHAR(100),
+                message TEXT,
+                stack TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+
+        // Ejecución de creación de tablas
+        await pool.query(guildSettingsTable);
         await pool.query(warnsTable);
-        await pool.query(logsTable);
+        await pool.query(activityTable);
+        await pool.query(errorsTable);
+
         console.log("✅ Tablas de MariaDB preparadas y sincronizadas.");
     } catch (err) {
         console.error("❌ Error inicializando MariaDB:", err);
