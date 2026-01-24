@@ -17,24 +17,34 @@ module.exports = {
         const ctx = canvas.getContext('2d');
 
         try {
+            // --- PASO CLAVE PARA ELIMINAR BORDES GRISES ---
+            // Pintamos todo el fondo de negro sólido primero
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // ----------------------------------------------
 
-            // 1. Cargar y dibujar el fondo de la ciudad (ocupa todo el rectángulo)
+            // 1. Cargar y dibujar el fondo de la ciudad (ocupa TODO el rectángulo)
             const background = await loadImage(path.join(__dirname, '../../assets/hero-bg.png'));
             ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-            // 3. Avatar Circular con Neón (El único elemento redondo)
-            ctx.save(); // Guardamos el estado rectangular
+            // 2. Capa de oscurecimiento degradada (rectangular)
+            const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
+            gradient.addColorStop(0, 'rgba(0,0,0,0.8)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0.1)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 3. Avatar Circular con Neón
+            ctx.save();
             ctx.beginPath();
             ctx.arc(200, 225, 130, 0, Math.PI * 2, true);
             ctx.lineWidth = 8;
             ctx.strokeStyle = '#3498db'; // Azul Capi Netta
             ctx.stroke();
-            ctx.clip(); // Recortamos SOLO para el avatar
+            ctx.clip();
             const avatar = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 512 }));
             ctx.drawImage(avatar, 70, 95, 260, 260);
-            ctx.restore(); // Restauramos el estado rectangular para los textos
+            ctx.restore();
 
             // 4. Textos estilo GTA (con Sombra)
             ctx.shadowColor = "black";
@@ -48,7 +58,7 @@ module.exports = {
 
             // Nombre de Usuario Azul
             ctx.fillStyle = '#3498db';
-            ctx.font = '90px "GTA"'; // Tamaño grande
+            ctx.font = '90px "GTA"';
             ctx.fillText(member.user.username.toUpperCase(), 380, 280);
 
             // Contador Gris
