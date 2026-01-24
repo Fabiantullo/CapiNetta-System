@@ -4,7 +4,7 @@
  * Fuerza una excepción controlada para verificar que el logger envíe la alerta a Discord.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -25,7 +25,7 @@ module.exports = {
 
             await interaction.reply({
                 content: "🚨 Excepción lanzada. Verificá si llegó al canal de logs/debug configurado.",
-                ephemeral: true
+                flags: [MessageFlags.Ephemeral]
             });
         }
     },

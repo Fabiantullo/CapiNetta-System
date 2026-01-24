@@ -4,7 +4,7 @@
  * Permite configurar categorías, roles, logs y enviar el Panel de Creación.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, AttachmentBuilder, MessageFlags } = require('discord.js');
 const { addTicketCategory, removeTicketCategory, getTicketCategories, addRoleToCategory, updateTicketCategory } = require('../../../utils/ticketDB');
 
 module.exports = {
@@ -74,9 +74,9 @@ module.exports = {
 
             try {
                 await updateGuildSettings(guildId, { ticketLogsChannel: channel.id });
-                return interaction.reply({ content: `✅ Canal de transcripts configurado en ${channel}.`, ephemeral: true });
+                return interaction.reply({ content: `✅ Canal de transcripts configurado en ${channel}.`, flags: [MessageFlags.Ephemeral] });
             } catch (err) {
-                return interaction.reply({ content: "❌ Error guardando la configuración.", ephemeral: true });
+                return interaction.reply({ content: "❌ Error guardando la configuración.", flags: [MessageFlags.Ephemeral] });
             }
         }
 
@@ -109,9 +109,9 @@ module.exports = {
 
             if (success) {
                 const roleNames = roleIdsToSave.map(id => `<@&${id}>`).join(', ');
-                return interaction.reply({ content: `✅ Categoría **${name}** creada con éxito.\n> **Roles:** ${roleNames}\n> **Ubicación:** ${parentCat.name}`, ephemeral: true });
+                return interaction.reply({ content: `✅ Categoría **${name}** creada con éxito.\n> **Roles:** ${roleNames}\n> **Ubicación:** ${parentCat.name}`, flags: [MessageFlags.Ephemeral] });
             } else {
-                return interaction.reply({ content: `❌ Hubo un error al guardar la categoría.`, ephemeral: true });
+                return interaction.reply({ content: `❌ Hubo un error al guardar la categoría.`, flags: [MessageFlags.Ephemeral] });
             }
         }
 
@@ -122,9 +122,9 @@ module.exports = {
 
             const success = await addRoleToCategory(guildId, name, role.id);
             if (success) {
-                return interaction.reply({ content: `✅ Rol **${role.name}** agregado a la categoría **${name}**.`, ephemeral: true });
+                return interaction.reply({ content: `✅ Rol **${role.name}** agregado a la categoría **${name}**.`, flags: [MessageFlags.Ephemeral] });
             } else {
-                return interaction.reply({ content: `❌ No se encontró la categoría o hubo un error DB.`, ephemeral: true });
+                return interaction.reply({ content: `❌ No se encontró la categoría o hubo un error DB.`, flags: [MessageFlags.Ephemeral] });
             }
         }
 
@@ -165,7 +165,7 @@ module.exports = {
             }
 
             if (Object.keys(updates).length === 0) {
-                return interaction.reply({ content: "⚠️ No especificaste ningún cambio.", ephemeral: true });
+                return interaction.reply({ content: "⚠️ No especificaste ningún cambio.", flags: [MessageFlags.Ephemeral] });
             }
 
             const success = await updateTicketCategory(guildId, currentName, updates);
@@ -184,9 +184,9 @@ module.exports = {
 
                 if (newCat) changes.push(`Destino: ${newCat}`);
 
-                return interaction.reply({ content: `✅ Categoría **${currentName}** actualizada.\n> ${changes.join('\n> ')}`, ephemeral: true });
+                return interaction.reply({ content: `✅ Categoría **${currentName}** actualizada.\n> ${changes.join('\n> ')}`, flags: [MessageFlags.Ephemeral] });
             } else {
-                return interaction.reply({ content: `❌ No se encontró la categoría **${currentName}** o hubo un error.`, ephemeral: true });
+                return interaction.reply({ content: `❌ No se encontró la categoría **${currentName}** o hubo un error.`, flags: [MessageFlags.Ephemeral] });
             }
         }
 
@@ -195,16 +195,16 @@ module.exports = {
             const name = interaction.options.getString('nombre');
             const success = await removeTicketCategory(guildId, name);
             if (success) {
-                return interaction.reply({ content: `🗑️ Categoría **${name}** eliminada.`, ephemeral: true });
+                return interaction.reply({ content: `🗑️ Categoría **${name}** eliminada.`, flags: [MessageFlags.Ephemeral] });
             } else {
-                return interaction.reply({ content: `❌ No se pudo eliminar (quizás no existe).`, ephemeral: true });
+                return interaction.reply({ content: `❌ No se pudo eliminar (quizás no existe).`, flags: [MessageFlags.Ephemeral] });
             }
         }
 
         // 5. LISTAR CATEGORÍAS
         if (sub === 'list') {
             const categories = await getTicketCategories(guildId);
-            if (categories.length === 0) return interaction.reply({ content: "⚠️ No hay categorías configuradas.", ephemeral: true });
+            if (categories.length === 0) return interaction.reply({ content: "⚠️ No hay categorías configuradas.", flags: [MessageFlags.Ephemeral] });
 
             const list = await Promise.all(categories.map(async c => {
                 // Parseo visual de roles (puede ser ID o Array JSON)
@@ -229,7 +229,7 @@ module.exports = {
                 .setTitle("📂 Categorías de Tickets")
                 .setDescription(list.join('\n\n'))
                 .setColor(0x3498db);
-            return interaction.reply({ embeds: [embed], ephemeral: true });
+            return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 
 
         }
@@ -237,7 +237,7 @@ module.exports = {
         // 6. ENVIAR PANEL (Grid de Botones)
         if (sub === 'panel') {
             const categories = await getTicketCategories(guildId);
-            if (categories.length === 0) return interaction.reply({ content: "⚠️ Primero debes añadir categorías con `/ticket add`.", ephemeral: true });
+            if (categories.length === 0) return interaction.reply({ content: "⚠️ Primero debes añadir categorías con `/ticket add`.", flags: [MessageFlags.Ephemeral] });
 
             const file = new AttachmentBuilder('./assets/logo.png');
 
@@ -283,7 +283,7 @@ module.exports = {
             if (currentRow.components.length > 0) rows.push(currentRow);
 
             await interaction.channel.send({ embeds: [embed], components: rows, files: [file] });
-            return interaction.reply({ content: "✅ Panel (Modo Botones) enviado.", ephemeral: true });
+            return interaction.reply({ content: "✅ Panel (Modo Botones) enviado.", flags: [MessageFlags.Ephemeral] });
         }
     }
 };

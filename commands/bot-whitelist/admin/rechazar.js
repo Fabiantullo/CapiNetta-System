@@ -4,7 +4,7 @@
  * Rechaza a un usuario y muestra la normativa asociada.
  */
 
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const config = require("../../../config");
 
 module.exports = {
@@ -24,6 +24,6 @@ module.exports = {
         // Enviar Embed Rojo con link a normativa
         await sendWhitelistEmbed(channel, user, "rechazada", 0xe74c3c, config.whitelist.normativa);
 
-        await interaction.reply({ content: `❌ Whitelist de **${user.tag}** rechazada.`, ephemeral: true });
+        await interaction.reply({ content: `❌ Whitelist de **${user.tag}** rechazada.`, flags: [MessageFlags.Ephemeral] });
     },
 };

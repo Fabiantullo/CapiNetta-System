@@ -9,7 +9,7 @@
 
 const {
     EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-    PermissionsBitField, ChannelType, AttachmentBuilder, UserSelectMenuBuilder
+    PermissionsBitField, ChannelType, AttachmentBuilder, UserSelectMenuBuilder, MessageFlags
 } = require('discord.js');
 
 // Importación de Helpers de Base de Datos
@@ -130,7 +130,7 @@ async function handleTicketInteraction(interaction) {
     // 1. Verificar si el canal actual es un ticket valido en DB
     const ticket = await getTicketByChannel(channel.id);
     if (!ticket) {
-        return interaction.reply({ content: "❌ Error de integridad: Este canal no figura en la base de datos de tickets.", ephemeral: true });
+        return interaction.reply({ content: "❌ Error de integridad: Este canal no figura en la base de datos de tickets.", flags: [MessageFlags.Ephemeral] });
     }
 
     // 2. Determinar si el usuario es STAFF autorizado para esta categoría
@@ -182,7 +182,7 @@ async function handleTicketInteraction(interaction) {
  */
 async function createTicketProcess(interaction, categoryName) {
     try {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
         // 1. Obtener datos de Categoría
         const categoryData = await getCategoryByName(interaction.guild.id, categoryName);
@@ -251,7 +251,7 @@ async function createTicketProcess(interaction, categoryName) {
  * Ejecuta la lógica de RECLAMAR (CLAIM) un ticket.
  */
 async function executeClaim(interaction, ticket, isStaff) {
-    if (!isStaff) return interaction.reply({ content: "🚫 Solo el Staff autorizado puede reclamar tickets.", ephemeral: true });
+    if (!isStaff) return interaction.reply({ content: "🚫 Solo el Staff autorizado puede reclamar tickets.", flags: [MessageFlags.Ephemeral] });
 
     const { channel, user, guild } = interaction;
 
@@ -277,12 +277,12 @@ async function executeClaim(interaction, ticket, isStaff) {
  * Inicia el proceso de TRANSFERENCIA (Muestra menú de selección de usuario).
  */
 async function requestTransfer(interaction, ticket, isStaff) {
-    if (!isStaff) return interaction.reply({ content: "🚫 Acción exclusiva para Staff.", ephemeral: true });
+    if (!isStaff) return interaction.reply({ content: "🚫 Acción exclusiva para Staff.", flags: [MessageFlags.Ephemeral] });
 
     // Regla: Solo el dueño actual del reclamo o un admin pueden transferir
     const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (ticket.claimedBy && ticket.claimedBy !== interaction.user.id && !isAdmin) {
-        return interaction.reply({ content: `🚫 Este ticket pertenece a <@${ticket.claimedBy}>. Solo él o Dirección pueden transferirlo.`, ephemeral: true });
+        return interaction.reply({ content: `🚫 Este ticket pertenece a <@${ticket.claimedBy}>. Solo él o Dirección pueden transferirlo.`, flags: [MessageFlags.Ephemeral] });
     }
 
     // Mostrar componente UserSelectMenu (nativo de Discord)
@@ -292,7 +292,7 @@ async function requestTransfer(interaction, ticket, isStaff) {
         .setMaxValues(1);
 
     const row = new ActionRowBuilder().addComponents(userSelect);
-    return interaction.reply({ content: "Selecciona al miembro del staff a quien transferir:", components: [row], ephemeral: true });
+    return interaction.reply({ content: "Selecciona al miembro del staff a quien transferir:", components: [row], flags: [MessageFlags.Ephemeral] });
 }
 
 /**
@@ -334,19 +334,19 @@ async function requestClose(interaction, ticket, isStaff) {
     const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
 
     if (ticket.claimedBy && ticket.claimedBy !== interaction.user.id && !isAdmin) {
-        return interaction.reply({ content: `🚫 Reclamado por <@${ticket.claimedBy}>. Solo él puede cerrarlo.`, ephemeral: true });
+        return interaction.reply({ content: `🚫 Reclamado por <@${ticket.claimedBy}>. Solo él puede cerrarlo.`, flags: [MessageFlags.Ephemeral] });
     }
 
     // Validación básica: Staff o Dueño del Ticket
     const isOwner = ticket.userId === interaction.user.id;
-    if (!isOwner && !isStaff) return interaction.reply({ content: "🚫 No tienes permisos para cerrar este ticket.", ephemeral: true });
+    if (!isOwner && !isStaff) return interaction.reply({ content: "🚫 No tienes permisos para cerrar este ticket.", flags: [MessageFlags.Ephemeral] });
 
     // Botones de Confirmación
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('confirm_close').setLabel('Sí, cerrar ticket').setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId('cancel_close').setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
     );
-    return interaction.reply({ content: '❓ **¿Confirmas que deseas cerrar y archivar este ticket?**', components: [row], ephemeral: true });
+    return interaction.reply({ content: '❓ **¿Confirmas que deseas cerrar y archivar este ticket?**', components: [row], flags: [MessageFlags.Ephemeral] });
 }
 
 /**

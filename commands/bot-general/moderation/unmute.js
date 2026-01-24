@@ -5,7 +5,7 @@
  * y elimina el registro de "Aislamiento".
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { getUserRoles, clearUserRoles } = require('../../../utils/dataHandler');
 
 module.exports = {
@@ -19,7 +19,7 @@ module.exports = {
         const user = interaction.options.getUser('usuario');
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
-        if (!member) return interaction.reply({ content: '❌ Usuario no encontrado en el servidor.', ephemeral: true });
+        if (!member) return interaction.reply({ content: '❌ Usuario no encontrado en el servidor.', flags: [MessageFlags.Ephemeral] });
 
         // Recuperar roles guardados
         const savedRoles = await getUserRoles(interaction.guild.id, user.id);
@@ -34,11 +34,11 @@ module.exports = {
 
                 await interaction.reply(`✅ **${user.tag}** ha sido liberado de la sanción y sus roles han sido restaurados.`);
             } else {
-                await interaction.reply({ content: "⚠️ No encontré roles guardados para este usuario (Quizás no fue muteado por el bot o DB limpia).", ephemeral: true });
+                await interaction.reply({ content: "⚠️ No encontré roles guardados para este usuario (Quizás no fue muteado por el bot o DB limpia).", flags: [MessageFlags.Ephemeral] });
             }
         } catch (err) {
             console.error(err);
-            await interaction.reply({ content: "❌ Error de permisos al intentar restaurar roles (Jerarquía).", ephemeral: true });
+            await interaction.reply({ content: "❌ Error de permisos al intentar restaurar roles (Jerarquía).", flags: [MessageFlags.Ephemeral] });
         }
     },
 };

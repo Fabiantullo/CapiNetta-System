@@ -4,7 +4,7 @@
  * Envía un Embed estético con un botón de verificación integrado.
  */
 
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -38,6 +38,6 @@ module.exports = {
         await interaction.channel.send({ embeds: [verifyEmbed], components: [row] });
 
         // Confirmación oculta
-        await interaction.reply({ content: "✅ Sistema de verificación enviado.", ephemeral: true });
+        await interaction.reply({ content: "✅ Sistema de verificación enviado.", flags: [MessageFlags.Ephemeral] });
     },
 };

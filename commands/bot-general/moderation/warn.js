@@ -6,7 +6,7 @@
  * - Al llegar a 3 warns, aplica un Mute/Timeout automático de 10 minutos.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { saveWarnToDB, addWarnLog } = require('../../../utils/dataHandler');
 
 module.exports = {
@@ -26,7 +26,7 @@ module.exports = {
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
         if (!member || user.bot) {
-            return interaction.reply({ content: '❌ Usuario no válido o es un bot.', ephemeral: true });
+            return interaction.reply({ content: '❌ Usuario no válido o es un bot.', flags: [MessageFlags.Ephemeral] });
         }
 
         const { client } = interaction;

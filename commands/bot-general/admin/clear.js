@@ -4,7 +4,7 @@
  * Requiere permisos de gestión de mensajes y respeta el límite de 14 días de Discord.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { sendLog } = require('../../../utils/logger');
 
 module.exports = {
@@ -29,12 +29,12 @@ module.exports = {
         if (!deleted || deleted.size === 0) {
             return interaction.reply({
                 content: '❌ No se pudieron borrar mensajes. Probablemente sean antiguos (>14 días) o no tenga permisos.',
-                ephemeral: true
+                flags: [MessageFlags.Ephemeral]
             });
         }
 
         // Respuesta efímera al admin
-        await interaction.reply({ content: `🧹 Se eliminaron **${deleted.size}** mensajes exitosamente.`, ephemeral: true });
+        await interaction.reply({ content: `🧹 Se eliminaron **${deleted.size}** mensajes exitosamente.`, flags: [MessageFlags.Ephemeral] });
 
         // Log de Auditoría
         sendLog(

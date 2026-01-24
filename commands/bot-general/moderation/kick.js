@@ -4,7 +4,7 @@
  * Incluye validación de permisos y registro en el canal de logs del servidor.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { sendLog } = require('../../../utils/logger');
 
 module.exports = {
@@ -22,12 +22,12 @@ module.exports = {
         // Fetch obligatorio para verificar kickable
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
-        if (!member) return interaction.reply({ content: '❌ Usuario no encontrado en el servidor.', ephemeral: true });
+        if (!member) return interaction.reply({ content: '❌ Usuario no encontrado en el servidor.', flags: [MessageFlags.Ephemeral] });
 
         if (!member.kickable) {
             return interaction.reply({
                 content: '❌ No puedo expulsar a este usuario (Mi rol es inferior o es el dueño).',
-                ephemeral: true
+                flags: [MessageFlags.Ephemeral]
             });
         }
 

@@ -6,7 +6,7 @@
  * @requires config - Depende de la configuración global para obtener IDs de canales.
  */
 
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const config = require("../../../config");
 
 module.exports = {
@@ -26,6 +26,6 @@ module.exports = {
 
         await sendWhitelistEmbed(channel, user, "aprobada", 0x2ecc71); // Verde
 
-        await interaction.reply({ content: `✅ Whitelist de **${user.tag}** aprobada.`, ephemeral: true });
+        await interaction.reply({ content: `✅ Whitelist de **${user.tag}** aprobada.`, flags: [MessageFlags.Ephemeral] });
     },
 };

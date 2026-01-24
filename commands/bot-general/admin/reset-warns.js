@@ -4,7 +4,7 @@
  * Útil tras un indulto o error de moderación.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { saveWarnToDB } = require('../../../utils/dataHandler');
 
 module.exports = {
@@ -25,6 +25,6 @@ module.exports = {
             interaction.client.warnMap.set(user.id, 0);
         }
 
-        await interaction.reply({ content: `✅ Historial limpio. Se han reseteado las advertencias de **${user.tag}**.` });
+        await interaction.reply({ content: `✅ Historial limpio. Se han reseteado las advertencias de **${user.tag}**.`, flags: [MessageFlags.Ephemeral] });
     },
 };

@@ -4,7 +4,7 @@
  * Permite cambiar solo el canal de alertas sin pasar por todo el wizard de /setup.
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const { getGuildSettings, updateGuildSettings } = require('../../../utils/dataHandler');
 const { logError } = require('../../../utils/logger');
 
@@ -31,7 +31,7 @@ module.exports = {
             if (!currentSettings) {
                 return interaction.reply({
                     content: "⚠️ Configuración no encontrada. Ejecutá `/setup` para inicializar el servidor primero.",
-                    ephemeral: true
+                    flags: [MessageFlags.Ephemeral]
                 });
             }
 
@@ -43,12 +43,12 @@ module.exports = {
 
             await interaction.reply({
                 content: `✅ Canal de Debug redirigido a <#${newDebugChannel}> correctamente.`,
-                ephemeral: true
+                flags: [MessageFlags.Ephemeral]
             });
 
         } catch (error) {
             await logError(interaction.client, error, "Comando set-debug", guildId);
-            await interaction.reply({ content: "❌ Error actualizando la base de datos.", ephemeral: true });
+            await interaction.reply({ content: "❌ Error actualizando la base de datos.", flags: [MessageFlags.Ephemeral] });
         }
     },
 };

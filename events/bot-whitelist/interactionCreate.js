@@ -5,7 +5,7 @@
  */
 
 const config = require("../../config");
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, MessageFlags } = require("discord.js");
 
 /**
  * Función auxiliar para enviar embeds estandarizados de Whitelist.
@@ -37,7 +37,7 @@ module.exports = {
 
         // 🔒 VERIFICACIÓN DE SEGURIDAD (SOLO STAFF)
         if (!interaction.member.roles.cache.has(config.whitelist.staffRoleId)) {
-            return interaction.reply({ content: "⛔ Acceso denegado. Solo Staff.", ephemeral: true });
+            return interaction.reply({ content: "⛔ Acceso denegado. Solo Staff.", flags: [MessageFlags.Ephemeral] });
         }
 
         const command = client.commands.get(interaction.commandName);
@@ -49,7 +49,7 @@ module.exports = {
         } catch (error) {
             console.error("❌ Error WL Interaction:", error);
             if (!interaction.replied) {
-                interaction.reply({ content: "❌ Error interno del bot.", ephemeral: true });
+                interaction.reply({ content: "❌ Error interno del bot.", flags: [MessageFlags.Ephemeral] });
             }
         }
     },

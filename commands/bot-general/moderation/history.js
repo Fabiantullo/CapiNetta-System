@@ -4,7 +4,7 @@
  * Consulta la tabla `warn_logs` en Base de Datos.
  */
 
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const pool = require('../../../utils/database');
 
 module.exports = {
@@ -24,7 +24,7 @@ module.exports = {
         );
 
         if (logs.length === 0) {
-            return interaction.reply({ content: `✅ **${user.tag}** tiene el expediente limpio (Sin registros en DB).`, ephemeral: true });
+            return interaction.reply({ content: `✅ **${user.tag}** tiene el expediente limpio (Sin registros en DB).`, flags: [MessageFlags.Ephemeral] });
         }
 
         // Construcción del Embed con formato de lista

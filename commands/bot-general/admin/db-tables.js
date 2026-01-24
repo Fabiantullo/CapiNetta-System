@@ -4,7 +4,7 @@
  * Muestra el conteo de filas en las tablas principales (Settings, Warns, Tickets).
  */
 
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const pool = require('../../../utils/database');
 
 module.exports = {
@@ -35,11 +35,11 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            await interaction.reply({ embeds: [embed], ephemeral: true });
+            await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         } catch (error) {
             const { logError } = require('../../../utils/logger');
             await logError(interaction.client, error, "Comando db-tables", interaction.guild.id);
-            await interaction.reply({ content: "❌ Error al consultar las tablas.", ephemeral: true });
+            await interaction.reply({ content: "❌ Error al consultar las tablas.", flags: [MessageFlags.Ephemeral] });
         }
     },
 };
