@@ -64,11 +64,40 @@ const initDB = async () => {
             )
         `;
 
+        // 5. Sistema de Tickets - Categorías
+        const ticketCategoriesTable = `
+            CREATE TABLE IF NOT EXISTS ticket_categories (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(25),
+                name VARCHAR(100),
+                description VARCHAR(255),
+                emoji VARCHAR(50),
+                roleId VARCHAR(25),
+                targetCategoryId VARCHAR(25),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+
+        // 6. Sistema de Tickets - Tickets Activos e Historial
+        const ticketsTable = `
+            CREATE TABLE IF NOT EXISTS tickets (
+                ticketId INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(25),
+                userId VARCHAR(25),
+                channelId VARCHAR(25),
+                status VARCHAR(20) DEFAULT 'open',
+                type VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+
         // Ejecución de creación de tablas
         await pool.query(guildSettingsTable);
         await pool.query(warnsTable);
         await pool.query(activityTable);
         await pool.query(errorsTable);
+        await pool.query(ticketCategoriesTable);
+        await pool.query(ticketsTable);
 
         console.log("✅ Tablas de MariaDB preparadas y sincronizadas.");
     } catch (err) {

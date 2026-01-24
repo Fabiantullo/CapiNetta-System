@@ -2,10 +2,27 @@ const { MessageFlags } = require("discord.js");
 const config = require("../../config").general;
 const { sendLog, logError } = require("../../utils/logger");
 const { getGuildSettings } = require("../../utils/dataHandler");
+const { handleTicketInteraction } = require("../../utils/ticketSystem");
 
 module.exports = {
     name: "interactionCreate",
     async execute(client, interaction) {
+        // 0. Manejo de Tickets (Botones y Menús)
+        if (interaction.isButton() || interaction.isStringSelectMenu()) {
+            if (interaction.customId.startsWith('ticket_') ||
+                interaction.customId.startsWith('create_ticket_') ||
+                ['close_ticket', 'confirm_close', 'cancel_close'].includes(interaction.customId)) {
+
+                // Mapeo para el Select Menu
+                if (interaction.customId === 'ticket_category_select') {
+                    const categoryName = interaction.values[0].replace('create_ticket_', '');
+                    interaction.customId = `create_ticket_${categoryName}`;
+                }
+
+                return await handleTicketInteraction(interaction);
+            }
+        }
+
         // 1. Manejo de Comandos Slash
         if (interaction.isChatInputCommand()) {
             const command = client.commands.get(interaction.commandName);
