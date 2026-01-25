@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Capi Netta Panel</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+        }
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        h1 {
+            color: #2ecc71;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🤖 Capi Netta Control Center</h1>
+
+    <div class="card">
+        <h3>Tickets Abiertos</h3>
+        <h2>
+            <%= stats.tickets %>
+        </h2>
+    </div>
+
+    <div class="card">
+        <h3>Usuarios Warned</h3>
+        <h2>
+            <%= stats.users %>
+        </h2>
+    </div>
+
+    <div class="card">
+        <h3>Logs Totales</h3>
+        <h2>
+            <%= stats.warns %>
+        </h2>
+    </div>
+</body>
+
+</html>
