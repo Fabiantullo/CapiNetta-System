@@ -4,8 +4,8 @@
  */
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } = require('discord.js');
-const { getTicketCategories } = require('../ticketDB');
-const { updateGuildSettings } = require('../dataHandler');
+const { getTicketCategories } = require('../index'); // or just '..' if index is parent
+const { updateGuildSettings } = require('../../dataHandler');
 
 /**
  * Genera el payload (embed, components, files) del panel para ser reutilizado en envíos y ediciones.

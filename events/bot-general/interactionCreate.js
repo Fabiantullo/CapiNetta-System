@@ -11,7 +11,7 @@ const { MessageFlags } = require("discord.js");
 const config = require("../../config").general;
 const { sendLog, logError } = require("../../utils/logger");
 const { getGuildSettings } = require("../../utils/dataHandler");
-const { handleTicketInteraction } = require("../../utils/ticketSystem");
+const { handleTicketInteraction } = require("../../utils/tickets");
 
 module.exports = {
     name: "interactionCreate",

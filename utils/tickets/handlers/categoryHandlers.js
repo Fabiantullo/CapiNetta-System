@@ -2,8 +2,8 @@ const { EmbedBuilder, MessageFlags } = require('discord.js');
 const {
     addTicketCategory, removeTicketCategory, getTicketCategories,
     addRoleToCategory, updateTicketCategory
-} = require('../ticketDB');
-const { getGuildSettings } = require('../dataHandler');
+} = require('../index');
+const { getGuildSettings } = require('../../dataHandler');
 const { generatePanelPayload } = require('./panelHandlers');
 
 /**
@@ -106,6 +106,7 @@ async function handleEditCategory(interaction) {
         const changes = [];
         if (newName) changes.push(`Nombre: **${newName}**`);
         if (newDesc) changes.push(`Desc: *${newDesc}*`);
+        if (newEmoji) changes.push(`Emoji: ${newEmoji}`);
 
         return interaction.reply({ content: `✅ Categoría **${currentName}** actualizada.\n> ${changes.join('\n> ')}`, flags: [MessageFlags.Ephemeral] });
     } else {
@@ -130,7 +131,6 @@ async function handleListCategories(interaction) {
 
     const list = categories.map(c => `**${c.name}** ${c.emoji}`);
 
-    // ... simplificado ...
     const embed = new EmbedBuilder().setDescription(list.join('\n'));
     return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 }

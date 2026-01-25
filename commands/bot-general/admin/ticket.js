@@ -72,7 +72,7 @@ module.exports = {
             handleSetLogs, handleAddCategory, handleAddRole,
             handleEditCategory, handleRemoveCategory, handleListCategories,
             handleSendPanel, handleMetrics
-        } = require('../../../utils/ticketManager');
+        } = require('../../../utils/tickets');
 
         try {
             switch (sub) {

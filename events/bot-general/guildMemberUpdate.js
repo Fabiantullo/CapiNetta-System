@@ -100,9 +100,9 @@ module.exports = {
             if (!session.executor) {
                 if (newM.guild && newM.guild.available) {
                     try {
-                        const logs = await newM.guild.fetchAuditLogs({ limit: 5, type: AuditLogEvent.MemberRoleUpdate });
-                        // Buscamos entrada reciente coincidente con el usuario objetivo
-                        const logEntry = logs?.entries.find(e => e.target.id === newM.id && e.createdTimestamp > (Date.now() - 20000));
+                        const logs = await newM.guild.fetchAuditLogs({ limit: 10, type: AuditLogEvent.MemberRoleUpdate });
+                        // Buscamos entrada reciente coincidente con el usuario objetivo (Lookback 45s)
+                        const logEntry = logs?.entries.find(e => e.target.id === newM.id && e.createdTimestamp > (Date.now() - 45000));
                         if (logEntry?.executor) {
                             session.executor = logEntry.executor;
                         }

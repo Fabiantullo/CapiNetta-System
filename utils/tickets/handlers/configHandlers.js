@@ -4,7 +4,7 @@
  */
 
 const { MessageFlags } = require('discord.js');
-const { updateGuildSettings } = require('../dataHandler');
+const { updateGuildSettings } = require('../../dataHandler');
 
 async function handleSetLogs(interaction) {
     const channel = interaction.options.getChannel('canal');
