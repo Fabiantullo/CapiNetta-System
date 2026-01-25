@@ -352,6 +352,12 @@ async function requestClose(interaction, ticket, isStaff) {
 /**
  * Ejecuta el CIERRE definitivo: Log, Transcript, DB Close y Delete Channel.
  */
+// Importar librería de transcripts HTML
+const discordTranscripts = require('discord-html-transcripts');
+
+/**
+ * Ejecuta el CIERRE definitivo: Log, Transcript, DB Close y Delete Channel.
+ */
 async function executeClose(interaction, ticket) {
     const { channel, guild, user } = interaction;
     await interaction.update({ content: '🔒 Procesando cierre y generando transcript...', components: [] });
@@ -362,16 +368,15 @@ async function executeClose(interaction, ticket) {
     try {
         let attachment = null;
 
-        // 2. Generar Transcript (.txt)
-        // Obtenemos los últimos 100 mensajes
-        const messages = await channel.messages.fetch({ limit: 100 });
-        const transcriptText = messages.reverse().map(m => {
-            const attachments = m.attachments.map(a => `<${a.url}>`).join(', ');
-            return `[${m.createdAt.toLocaleString()}] ${m.author.tag}: ${m.content} ${attachments}`;
-        }).join('\n');
-
-        const buffer = Buffer.from(transcriptText, 'utf-8');
-        attachment = new AttachmentBuilder(buffer, { name: `transcript-${channel.name}.txt` });
+        // 2. Generar Transcript (HTML Profesional)
+        attachment = await discordTranscripts.createTranscript(channel, {
+            limit: -1, // Exportar todos los mensajes
+            returnType: 'attachment', // Retorna un AttachmentBuilder
+            filename: `transcript-${channel.name}.html`, // Nombre del archivo
+            saveImages: true, // Descargar imágenes
+            footerText: `Exportado el {date} | Capi Netta RP`,
+            poweredBy: false // Ocultar "Powered by discord-html-transcripts"
+        });
 
         // 3. Enviar Log a Discord (Canal de Logs)
         const settings = await getGuildSettings(guild.id);
@@ -394,8 +399,8 @@ async function executeClose(interaction, ticket) {
         }
 
         // 4. Enviar DM al usuario (Copia del transcript)
-        try {
-            const ticketUser = await guild.members.fetch(ticket.userId);
+        try { // Intentamos buscar al usuario si sigue en el server
+            const ticketUser = await guild.members.fetch(ticket.userId).catch(() => null);
             if (ticketUser) {
                 await ticketUser.send({
                     content: `👋 Tu ticket **${channel.name}** en **${guild.name}** ha sido cerrado. Te adjunto el historial de la conversación.`,
@@ -403,7 +408,7 @@ async function executeClose(interaction, ticket) {
                 });
             }
         } catch (dmErr) {
-            console.log(`No se pudo enviar MD al usuario ${ticket.userId} (posiblemente bloqueados).`);
+            console.log(`No se pudo enviar MD al usuario ${ticket.userId}.`);
         }
 
     } catch (err) {
