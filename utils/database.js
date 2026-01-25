@@ -20,18 +20,4 @@ const initDB = async () => {
     }
 };
 
-// 2. EL SALVAVIDAS (Pool Falso)
-// Esto evita que el bot explote con "Cannot destructure property 'pool' of undefined"
-const pool = {
-    query: async (...args) => {
-        console.error("⚠️ ALERTA: Un archivo viejo intentó usar 'pool' (MySQL2). Debes migrarlo a Prisma.");
-        return [[]]; // Retorna array vacío para no romper el await
-    },
-    execute: async (...args) => {
-        console.error("⚠️ ALERTA: Un archivo viejo intentó usar 'pool.execute'.");
-        return [[]];
-    }
-};
-
-// 3. Exportamos TODO (Prisma + initDB)
 module.exports = { prisma, initDB };

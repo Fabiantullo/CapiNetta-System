@@ -28,6 +28,9 @@ module.exports = {
 
     async execute(interaction) {
         const client = interaction.client;
+        const guild = interaction.guild;
+
+        await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
         // 1. Uso de CPU (Aproximación simple con Load Average)
         const load = os.loadavg();
@@ -49,18 +52,34 @@ module.exports = {
         const minutes = Math.floor(uptime / 60) % 60;
         const seconds = Math.floor(uptime % 60);
 
-        // 4. Latencia DB (Prisma Ping)
+        // 4. Latencia DB (Prisma Ping) & Conteos
         let dbStatus = "🔴 Desconectado";
         let dbPing = 0;
+        let ticketStats = { total: 0, open: 0 };
+        let warnCount = 0;
+        let errorCount = 0;
+
         try {
             const startStr = Date.now();
-            // Ejecutamos una query trivial
-            await prisma.$queryRawUnsafe("SELECT 1");
+            await prisma.$queryRawUnsafe("SELECT 1"); // Ping
             dbPing = Date.now() - startStr;
             dbStatus = `🟢 Conectado (${dbPing}ms)`;
+
+            // Conteos Database (Paralelo para velocidad)
+            const [totalTickets, openTickets, totalWarns, totalErrors] = await Promise.all([
+                prisma.ticket.count(),
+                prisma.ticket.count({ where: { status: 'open' } }),
+                prisma.warnLog.count(),
+                prisma.systemError.count()
+            ]);
+
+            ticketStats = { total: totalTickets, open: openTickets };
+            warnCount = totalWarns;
+            errorCount = totalErrors;
+
         } catch (e) {
             dbStatus = "🔴 Error Conexión";
-            console.error(e);
+            console.error("Error fetching DB stats:", e);
         }
 
         // 5. Commit Hash (Git)
@@ -69,45 +88,58 @@ module.exports = {
             gitHash = execSync('git rev-parse --short HEAD').toString().trim();
         } catch (e) { }
 
+        // 6. Stats del Discord (Servidor Actual)
+        const totalMembers = guild.memberCount;
+        const botCount = guild.members.cache.filter(m => m.user.bot).size; // Puede requerir fetch si no están en caché
+        const humanCount = totalMembers - botCount; // Aproximado si caché incompleto, pero rápido
+
+        const totalChannels = guild.channels.cache.size;
+        const textChannels = guild.channels.cache.filter(c => c.type === 0).size; // GUILD_TEXT
+        const voiceChannels = guild.channels.cache.filter(c => c.type === 2).size; // GUILD_VOICE
+
+        const roleCount = guild.roles.cache.size;
+
         const embed = new EmbedBuilder()
-            .setTitle("🖥️ Estado del Sistema | Capi Netta RP")
-            .setColor(0x2ecc71)
-            .setThumbnail(client.user.displayAvatarURL())
+            .setTitle(`📊 Panel de Control | ${client.user.username}`)
+            .setColor(0x2b2d31) // Dark theme
+            .setThumbnail(guild.iconURL({ dynamic: true }))
+            .setDescription(`**Estado General del Sistema y ${guild.name}**`)
+
+            // --- BLOQUE RESERVA DE RECURSOS ---
             .addFields(
                 {
-                    name: "🧠 Memoria RAM",
-                    value: `${createProgressBar(usedMem, totalMem)} **${memUsagePercent}%**\n${usedMemMB}MB / ${totalMemMB}MB`,
+                    name: "🖥️ Uso de Recursos",
+                    value: `> **CPU Load:** \`${cpuUsage}%\`\n> **RAM:** ${createProgressBar(usedMem, totalMem)} \`${memUsagePercent}%\`\n> **Uptime:** ${days}d ${hours}h ${minutes}m`,
+                    inline: false
+                },
+            )
+
+            // --- BLOQUE BASE DE DATOS ---
+            .addFields(
+                {
+                    name: "💾 Base de Datos & Registros",
+                    value: `> **Estado:** ${dbStatus}\n> **Warns Registrados:** \`${warnCount}\`\n> **Errores Sistema:** \`${errorCount}\`\n> **Tickets (Tot/Open):** \`${ticketStats.total}\` / \`${ticketStats.open}\``,
                     inline: true
                 },
                 {
-                    name: "⚙️ CPU Load (1m)",
-                    value: `\`${cpuUsage}%\``,
-                    inline: true
-                },
-                {
-                    name: "🗄️ Base de Datos",
-                    value: dbStatus,
-                    inline: true
-                },
-                {
-                    name: "⏱️ Uptime",
-                    value: `${days}d ${hours}h ${minutes}m ${seconds}s`,
-                    inline: true
-                },
-                {
-                    name: "🤖 Bot Version",
-                    value: `v2.0 (Build: \`${gitHash}\`)`,
-                    inline: true
-                },
-                {
-                    name: "📚 Discord.js",
-                    value: `v${version}`,
+                    name: "🤖 Info del Bot (Global)",
+                    value: `> **Versión:** v2.0-indev\n> **Build:** \`${gitHash}\`\n> **Ping WS:** \`${client.ws.ping}ms\`\n> **Servidores:** \`${client.guilds.cache.size}\``,
                     inline: true
                 }
             )
-            .setFooter({ text: "Oracle Cloud Infrastructure • Prisma ORM" })
+
+            // --- BLOQUE SERVIDOR ACTUAL ---
+            .addFields(
+                {
+                    name: `🏰 Estadísticas de ${guild.name}`,
+                    value: `> **👥 Miembros:** ${totalMembers} (👤 ${humanCount} | 🤖 ${botCount})\n> **💬 Canales:** ${totalChannels} (📝 ${textChannels} | 🔊 ${voiceChannels})\n> **🛡️ Roles:** ${roleCount}`,
+                    inline: false
+                }
+            )
+
+            .setFooter({ text: `Solicitado por ${interaction.user.tag} • ${new Date().toLocaleTimeString()}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
-        return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+        return interaction.editReply({ embeds: [embed] });
     }
 };
