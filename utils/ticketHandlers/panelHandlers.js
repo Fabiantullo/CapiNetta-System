@@ -4,7 +4,7 @@
  */
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } = require('discord.js');
-const { getTicketCategories } = require('../ticketDB');
+const { getTicketCategories } = require('../tickeDB');
 const { updateGuildSettings } = require('../dataHandler');
 
 /**
@@ -15,11 +15,11 @@ function generatePanelPayload(categories) {
 
     const description = [
         "### ¡Te damos la bienvenida al soporte de Capi Netta RP!",
-        "Seleccioná la opción que mejor se adapte a tu consulta para ser atendido por el staff correspondiente.\n"
+        "Seleccioná la opción que mejor se adapte a tu consulta para ser atendido por el staff correspondiente."
     ];
 
     categories.forEach(c => {
-        description.push(`### ${c.emoji} ${c.name}\n${c.description}\n`);
+        description.push(`### ${c.emoji} ${c.name}\n${c.description}`);
     });
 
     description.push("⚠️ **El mal uso de este sistema conlleva sanciones.**");
