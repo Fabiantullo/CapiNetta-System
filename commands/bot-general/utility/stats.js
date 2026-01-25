@@ -55,7 +55,7 @@ module.exports = {
         try {
             const startStr = Date.now();
             // Ejecutamos una query trivial
-            await prisma.$queryRaw`SELECT 1`;
+            await prisma.$queryRawUnsafe("SELECT 1");
             dbPing = Date.now() - startStr;
             dbStatus = `🟢 Conectado (${dbPing}ms)`;
         } catch (e) {
