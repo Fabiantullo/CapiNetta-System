@@ -53,4 +53,24 @@ async function sendLog(client, user, text, guildId, messageToEdit = null) {
     }
 }
 
-module.exports = { sendLog };
+/**
+ * Registra errores críticos del sistema en DB y Consola.
+ */
+async function logError(client, error, context, guildId = null) {
+    const { prisma } = require("./database");
+    console.error(`[${context}] Error:`, error);
+
+    try {
+        await prisma.systemError.create({
+            data: {
+                context: context,
+                message: error.toString(),
+                stack: error.stack
+            }
+        });
+    } catch (dbErr) {
+        console.error("Critical: Failed to log error to DB.", dbErr);
+    }
+}
+
+module.exports = { sendLog, logError };

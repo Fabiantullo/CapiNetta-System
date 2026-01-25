@@ -4,7 +4,7 @@
  */
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } = require('discord.js');
-const { getTicketCategories } = require('../tickeDB');
+const { getTicketCategories } = require('../ticketDB');
 const { updateGuildSettings } = require('../dataHandler');
 
 /**
