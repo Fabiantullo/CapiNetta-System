@@ -33,5 +33,5 @@ const pool = {
     }
 };
 
-// 3. Exportamos TODO (Prisma + initDB + pool)
-module.exports = { prisma, initDB, pool };
+// 3. Exportamos TODO (Prisma + initDB)
+module.exports = { prisma, initDB };
