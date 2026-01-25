@@ -32,6 +32,14 @@ module.exports = {
 
         await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
+        // --- PRE-FETCH (Vital para Staff/Voice exactos) ---
+        // Forzamos la carga de miembros para que el filtro de roles/permisos funcione bien
+        try {
+            await guild.members.fetch();
+        } catch (e) {
+            console.log("Error fetching members:", e);
+        }
+
         // --- 1. DATOS DEL SISTEMA (OS & NODE) ---
         const load = os.loadavg();
         const cpuUsage = load[0].toFixed(2);
@@ -78,8 +86,6 @@ module.exports = {
         }
 
         // --- 3. DATOS DEL SERVIDOR (Discord) ---
-        // Fetch full Members to ensure accuracy for Staff/Voice (Heavy operation on big servers, but OK for administrative command)
-
         const totalMembers = guild.memberCount;
         const botCount = guild.members.cache.filter(m => m.user.bot).size;
         const humanCount = totalMembers - botCount;
@@ -91,12 +97,21 @@ module.exports = {
         // Usuarios en Voz
         const voiceUsers = guild.members.cache.filter(m => m.voice.channel).size;
 
-        // Staff Online (Aproximación por Permisos + Presencia no Offline)
-        const staffOnline = guild.members.cache.filter(m =>
-            !m.user.bot &&
-            m.permissions.has(PermissionFlagsBits.KickMembers) &&
-            m.presence?.status && m.presence.status !== 'offline'
-        ).size;
+        // Staff Online (Mejorado: Incluye ModerateMembers y ManageMessages para Soportes)
+        const staffOnline = guild.members.cache.filter(m => {
+            if (m.user.bot) return false;
+            // Estado: Online, Idle o DND (No offline)
+            const isOnline = m.presence && m.presence.status !== 'offline';
+
+            // Permisos: Admin, Kick, Ban, Mute (Moderate), Gestionar Mensajes
+            // Nota: Algunos roles de soporte pueden tener solo ManageMessages o ModerateMembers
+            const hasPerms = m.permissions.has(PermissionFlagsBits.Administrator) ||
+                m.permissions.has(PermissionFlagsBits.KickMembers) ||
+                m.permissions.has(PermissionFlagsBits.BanMembers) ||
+                m.permissions.has(PermissionFlagsBits.ModerateMembers) ||
+                m.permissions.has(PermissionFlagsBits.ManageMessages);
+            return isOnline && hasPerms;
+        }).size;
 
         // Canales
         const totalChannels = guild.channels.cache.size;
@@ -110,6 +125,9 @@ module.exports = {
         // Git Hash
         let gitHash = "Dev";
         try { gitHash = execSync('git rev-parse --short HEAD').toString().trim(); } catch { }
+
+        // Lista de Servidores (Nombres)
+        const serverList = client.guilds.cache.map(g => `• ${g.name} (${g.memberCount} users)`).join('\n');
 
         const embed = new EmbedBuilder()
             .setTitle(`📊 Panel Avanzado | ${client.user.username}`)
@@ -140,10 +158,10 @@ module.exports = {
                 }
             )
 
-            // INFO GLOBAL
+            // INFO GLOBAL (Lista de Servidores)
             .addFields({
-                name: "🌐 Global Bot Stats",
-                value: `Servidores: \`${client.guilds.cache.size}\` | Ping: \`${client.ws.ping}ms\` | Build: \`${gitHash}\``,
+                name: `🌐 Global Bot Stats (${client.guilds.cache.size} Servidores)`,
+                value: `**Ping:** \`${client.ws.ping}ms\` | **Build:** \`${gitHash}\`\n\n**Lista de Servidores:**\n${serverList.slice(0, 1000)}`, // Limitamos para no romper el embed
                 inline: false
             })
 
