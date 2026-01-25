@@ -19,6 +19,8 @@ model GuildSettings {
   roleNoVerify      String?
   roleMuted         String?
   ticketLogsChannel String?
+  ticketPanelChannel String? // Canal donde está el panel (ID)
+  ticketPanelMessage String? // Mensaje del panel (ID)
   isSetup           Boolean @default(false)
 
   @@map("guild_settings") // Nombre real de la tabla en SQL

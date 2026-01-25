@@ -5,20 +5,21 @@
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } = require('discord.js');
 const { getTicketCategories } = require('../ticketDB');
+const { updateGuildSettings } = require('../dataHandler');
 
-async function handleSendPanel(interaction) {
-    const categories = await getTicketCategories(interaction.guild.id);
-    if (categories.length === 0) return interaction.reply({ content: "⚠️ Primero debes añadir categorías con `/ticket add`.", flags: [MessageFlags.Ephemeral] });
-
+/**
+ * Genera el payload (embed, components, files) del panel para ser reutilizado en envíos y ediciones.
+ */
+function generatePanelPayload(categories) {
     const file = new AttachmentBuilder('./assets/logo.png');
 
     const description = [
-        "**¡Bienvenido al sistema de soporte oficial de Capi Netta RP!**",
-        "Selecciona la opción que mejor se adapte a tu consulta para ser atendido por el staff correspondiente.\n"
+        "### ¡Te damos la bienvenida al soporte de Capi Netta RP!",
+        "Seleccioná la opción que mejor se adapte a tu consulta para ser atendido por el staff correspondiente.\n"
     ];
 
     categories.forEach(c => {
-        description.push(`> **${c.emoji} ${c.name}**\n> *${c.description}*\n`);
+        description.push(`### ${c.emoji} ${c.name}\n${c.description}\n`);
     });
 
     description.push("⚠️ **El mal uso de este sistema conlleva sanciones.**");
@@ -30,6 +31,7 @@ async function handleSendPanel(interaction) {
         .setColor(0x2ecc71)
         .setFooter({ text: "Sistema de Tickets Automático" });
 
+    // Grid System: Max 3 botones por fila para que no se estiren tanto
     const rows = [];
     let currentRow = new ActionRowBuilder();
 
@@ -40,18 +42,37 @@ async function handleSendPanel(interaction) {
             .setEmoji(c.emoji)
             .setStyle(ButtonStyle.Secondary);
 
-        if (currentRow.components.length >= 5) {
+        currentRow.addComponents(btn);
+
+        // Si la fila tiene 3 botones o es el último, la empujamos
+        if (currentRow.components.length >= 3) {
             rows.push(currentRow);
             currentRow = new ActionRowBuilder();
         }
-
-        currentRow.addComponents(btn);
     });
 
+    // Si quedaron botones sueltos en una fila incompleta
     if (currentRow.components.length > 0) rows.push(currentRow);
 
-    await interaction.channel.send({ embeds: [embed], components: rows, files: [file] });
-    return interaction.reply({ content: "✅ Panel (Modo Botones) enviado.", flags: [MessageFlags.Ephemeral] });
+    return { embeds: [embed], components: rows, files: [file] };
 }
 
-module.exports = { handleSendPanel };
+async function handleSendPanel(interaction) {
+    const categories = await getTicketCategories(interaction.guild.id);
+    if (categories.length === 0) return interaction.reply({ content: "⚠️ Primero debes añadir categorías con `/ticket add`.", flags: [MessageFlags.Ephemeral] });
+
+    const payload = generatePanelPayload(categories);
+    const channel = interaction.channel;
+
+    const sentMessage = await channel.send(payload);
+
+    // Guardamos la ubicación del panel para Auto-Updates
+    await updateGuildSettings(interaction.guild.id, {
+        ticketPanelChannel: channel.id,
+        ticketPanelMessage: sentMessage.id
+    });
+
+    return interaction.reply({ content: "✅ Panel enviado y vinculado para actualizaciones automáticas.", flags: [MessageFlags.Ephemeral] });
+}
+
+module.exports = { handleSendPanel, generatePanelPayload };
