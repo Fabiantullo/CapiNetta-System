@@ -1,7 +1,8 @@
 const { Client, GatewayIntentBits, Partials } = require("discord.js");
 const config = require("./config");
-const { prisma } = require("./utils/database");
 const { getWarnsFromDB } = require("./utils/dataHandler");
+// ❌ BORRADO: const { initDB } = require("./utils/database"); 
+// Prisma ya no necesita initDB manual.
 
 const clientGeneral = new Client({
   intents: [
@@ -32,8 +33,11 @@ process.on('uncaughtException', error => console.error('❌ Uncaught Exception:'
 
 (async () => {
   try {
-    asdawait prisma.$connect();
-    console.log("✅ [General] Warns cargados desde MariaDB.");
+    // ❌ BORRADO: await initDB(); 
+
+    // Cargamos warns (ahora usando Prisma internamente en dataHandler)
+    clientGeneral.warnMap = await getWarnsFromDB();
+    console.log("✅ [General] Warns cargados desde Base de Datos.");
 
     await clientGeneral.login(config.general.token);
     console.log("✅ [General] Login exitoso.");
