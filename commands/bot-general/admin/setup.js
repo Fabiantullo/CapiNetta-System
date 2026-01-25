@@ -30,7 +30,7 @@ module.exports = {
         let config = {
             logsChannel: null, verifyChannel: null, debugChannel: null,
             roleUser: null, roleNoVerify: null, roleMuted: null,
-            welcomeChannel: null, supportChannel: null, isSetup: 1
+            welcomeChannel: null, supportChannel: null, isSetup: true
         };
 
         let step = 1; // Control de flujo del Wizard
