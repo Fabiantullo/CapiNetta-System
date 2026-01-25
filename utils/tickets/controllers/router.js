@@ -6,6 +6,7 @@ const { MessageFlags, PermissionsBitField } = require('discord.js');
 const DB = require('../db');
 const Actions = require('./actions');
 const { parseRoleIds } = require('../constants');
+const { hasPermission, PERMISSIONS } = require('../../permissions');
 
 async function handleTicketInteraction(interaction) {
     const { customId, guild, member, channel } = interaction;
@@ -23,34 +24,43 @@ async function handleTicketInteraction(interaction) {
     }
 
     // --- PERMISOS STAFF ---
+    // --- CONTEXTO DE PERMISOS ---
     const categoryData = await DB.getCategoryByName(guild.id, ticket.type);
     const allowedRoles = parseRoleIds(categoryData.roleId);
-    const isStaff = allowedRoles.some(r => member.roles.cache.has(r)) || member.permissions.has(PermissionsBitField.Flags.Administrator);
-    // const isOwner = ticket.userId === interaction.user.id;
+
+    // Objeto de contexto para pasar al verificador
+    const permContext = {
+        allowedRoles: allowedRoles,
+        ownerId: ticket.userId,
+        claimedBy: ticket.claimedBy
+    };
 
     // --- ROUTING ---
     switch (customId) {
         case 'claim_ticket':
-            if (!isStaff) return interaction.reply({ content: "🚫 Solo Staff.", flags: [MessageFlags.Ephemeral] });
+            if (!hasPermission(member, PERMISSIONS.TICKET.CLAIM, permContext)) {
+                return interaction.reply({ content: "🚫 Solo Staff autorizado puede reclamar.", flags: [MessageFlags.Ephemeral] });
+            }
             return await Actions.executeClaim(interaction, ticket);
 
         case 'transfer_ticket':
-            if (!isStaff) return interaction.reply({ content: "🚫 Solo Staff.", flags: [MessageFlags.Ephemeral] });
+            if (!hasPermission(member, PERMISSIONS.TICKET.TRANSFER, permContext)) {
+                return interaction.reply({ content: "🚫 Solo Staff autorizado puede transferir.", flags: [MessageFlags.Ephemeral] });
+            }
             return await Actions.requestTransfer(interaction, ticket);
 
         case 'confirm_transfer_select':
             return await Actions.executeTransfer(interaction, ticket, interaction.values[0]);
 
         case 'close_ticket':
-            // Validación de Close request es compleja, delegamos si es viable o movemos validación acá?
-            // Movemos validación básica acá por consistencia
-            const isAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
-            const isOwner = ticket.userId === interaction.user.id;
-
-            if (ticket.claimedBy && ticket.claimedBy !== interaction.user.id && !isAdmin) {
-                return interaction.reply({ content: `🚫 Reclamado por <@${ticket.claimedBy}>. Solo él puede cerrarlo.`, flags: [MessageFlags.Ephemeral] });
+            if (!hasPermission(member, PERMISSIONS.TICKET.CLOSE, permContext)) {
+                return interaction.reply({
+                    content: ticket.claimedBy && ticket.claimedBy !== member.id
+                        ? `🚫 Reclamado por <@${ticket.claimedBy}>. Solo él puede cerrarlo.`
+                        : "🚫 No tienes permisos para cerrar este ticket.",
+                    flags: [MessageFlags.Ephemeral]
+                });
             }
-            if (!isOwner && !isStaff) return interaction.reply({ content: "🚫 No tienes permisos.", flags: [MessageFlags.Ephemeral] });
 
             return await Actions.requestClose(interaction);
 
