@@ -4,7 +4,7 @@
  */
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } = require('discord.js');
-const { getTicketCategories } = require('../index'); // or just '..' if index is parent
+const { getTicketCategories } = require('../db/categories');
 const { updateGuildSettings } = require('../../dataHandler');
 
 /**

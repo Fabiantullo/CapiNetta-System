@@ -5,7 +5,7 @@
 const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
-const { Strategy } = require('passport-discord');
+const { Strategy } = require('passport-discord-auth');
 const { PermissionsBitField } = require('discord.js');
 const crypto = require('crypto');
 const helmet = require('helmet');

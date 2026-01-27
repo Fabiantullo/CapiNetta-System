@@ -2,7 +2,7 @@ const { EmbedBuilder, MessageFlags } = require('discord.js');
 const {
     addTicketCategory, removeTicketCategory, getTicketCategories,
     addRoleToCategory, updateTicketCategory
-} = require('../index');
+} = require('../db/categories');
 const { getGuildSettings } = require('../../dataHandler');
 const { generatePanelPayload } = require('./panelHandlers');
 

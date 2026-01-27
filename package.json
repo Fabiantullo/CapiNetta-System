@@ -23,7 +23,7 @@
     "express-session": "^1.18.0",
     "helmet": "^7.1.0",
     "passport": "^0.7.0",
-    "passport-discord": "^0.1.4"
+    "passport-discord-auth": "^1.2.0"
   },
   "devDependencies": {
     "prisma": "^5.10.0"
