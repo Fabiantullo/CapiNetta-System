@@ -9,7 +9,7 @@
     "start": "node index-general.js",
     "prod": "pm2 start ecosystem.config.js",
     "postinstall": "prisma generate",
-    "setup": "npm install && npx prisma generate && node deploy-general.js && node deploy-whitelist.js && npm run prod"
+    "setup": "npm install && npx prisma generate && npx prisma db push && npm run deploy && npm run prod"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
