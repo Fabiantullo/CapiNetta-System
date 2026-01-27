@@ -1,10 +1,9 @@
 /**
  * @file messageCreate.js
  * @description Evento global de mensajes.
- * Implementa el módulo de ANTI-SCAM y ANTI-SPAM:
- * 1. Detecta menciones masivas (>10 usuarios).
- * 2. Detecta mensajes repetitivos (flood).
- * 3. Aplica sanciones automáticas (Aislamiento/Mute) y limpia el chat.
+ * Implementa el módulo de ANTI-SPAM:
+ * 1. Detecta mensajes repetitivos (flood).
+ * 2. Aplica sanciones automáticas (Aislamiento/Mute) y limpia el chat.
  */
 
 const { logError, sendLog } = require("../../utils/logger");
@@ -20,8 +19,8 @@ module.exports = {
         const settings = await getGuildSettings(message.guild.id);
         if (!settings || !settings.isSetup) return;
 
-        // Detección de Amenazas
-        const isScam = message.mentions.users.size > 10 || checkDuplicate(client, message);
+        // ===== DETECCIÓN (SOLO FLOOD) =====
+        const isScam = checkDuplicate(client, message);
 
         if (isScam) {
             try {
@@ -37,7 +36,7 @@ module.exports = {
                 await applyScamSanction(
                     client,
                     message,
-                    isScam === true ? "Mensajes repetitivos (Flood)" : "Menciones masivas (Mass Mention)",
+                    "Mensajes repetitivos (Flood)",
                     settings
                 );
             } catch (err) {
@@ -64,7 +63,8 @@ async function applyScamSanction(client, message, reason, settings) {
     await saveUserRoles(message.guild.id, member.id, rolesToSave);
 
     // Aviso DM
-    await member.send(`⚠️ Tu cuenta fue aislada preventivamente en **${message.guild.name}** por seguridad.`).catch(() => { });
+    await member.send(`⚠️ Tu cuenta fue aislada preventivamente en **${message.guild.name}** por seguridad.`)
+        .catch(() => { });
 
     try {
         // Aplicar Rol de Aislamiento
@@ -77,7 +77,12 @@ async function applyScamSanction(client, message, reason, settings) {
         }
 
         // Log de Auditoría
-        await sendLog(client, member.user, `🛡️ **AISLAMIENTO**: ${member.user.tag} enviado a soporte por ${reason}.`, message.guild.id);
+        await sendLog(
+            client,
+            member.user,
+            `🛡️ **AISLAMIENTO**: ${member.user.tag} enviado a soporte por ${reason}.`,
+            message.guild.id
+        );
     } catch (err) {
         logError(client, err, "Aisolation Roles Error", message.guild.id);
     }
@@ -90,6 +95,7 @@ function checkDuplicate(client, message) {
     if (!client.consecutiveMap.has(message.author.id)) {
         client.consecutiveMap.set(message.author.id, { content: '', count: 0 });
     }
+
     const data = client.consecutiveMap.get(message.author.id);
 
     // Si el contenido es igual al anterior
