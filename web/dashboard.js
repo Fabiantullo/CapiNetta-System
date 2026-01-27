@@ -44,6 +44,8 @@ passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
 passport.use(new Strategy({
+    // La librería espera clientId en minúsculas; mantenemos ambos por compatibilidad
+    clientId: config.dashboard.clientId,
     clientID: config.dashboard.clientId,
     clientSecret: config.dashboard.clientSecret,
     callbackURL: config.dashboard.callbackUrl,
