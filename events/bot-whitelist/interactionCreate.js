@@ -35,9 +35,13 @@ module.exports = {
     async execute(client, interaction) {
         if (!interaction.isChatInputCommand()) return;
 
-        // 🔒 VERIFICACIÓN DE SEGURIDAD (SOLO STAFF)
-        if (!interaction.member.roles.cache.has(config.whitelist.staffRoleId)) {
-            return interaction.reply({ content: "⛔ Acceso denegado. Solo Staff.", flags: [MessageFlags.Ephemeral] });
+        // 🔒 VERIFICACIÓN DE SEGURIDAD (STAFF o ADMIN)
+        const hasStaffRole = interaction.member.roles.cache.has(config.whitelist.staffRoleId);
+        const { PermissionsBitField } = require('discord.js');
+        const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+        if (!hasStaffRole && !isAdmin) {
+            return interaction.reply({ content: "⛔ Acceso denegado. Solo Staff o Administrador.", flags: [MessageFlags.Ephemeral] });
         }
 
         const command = client.commands.get(interaction.commandName);
