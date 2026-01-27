@@ -3,7 +3,6 @@ require('dotenv').config();
 const requiredVars = [
     'GENERAL_TOKEN',
     'GENERAL_GUILD_ID',
-    'GENERAL_VERIFY_CHANNEL',
     'DATABASE_URL',
     'WHITELIST_TOKEN',
     'GENERAL_CLIENT_ID',
@@ -28,7 +27,7 @@ module.exports = {
     general: {
         token: process.env.GENERAL_TOKEN,
         guildId: process.env.GENERAL_GUILD_ID,
-        verifyChannel: process.env.GENERAL_VERIFY_CHANNEL,
+        verifyChannel: process.env.GENERAL_VERIFY_CHANNEL || null,
         welcomeChannel: process.env.GENERAL_WELCOME_CHANNEL,
         logsChannel: process.env.GENERAL_LOGS_CHANNEL,
         roleNoVerify: process.env.GENERAL_ROLE_NO_VERIFY,
