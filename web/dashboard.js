@@ -44,11 +44,10 @@ passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
 passport.use(new Strategy({
-    // La librería espera clientId en minúsculas; mantenemos ambos por compatibilidad
+    // La librería espera los campos en minúsculas exactas
     clientId: config.dashboard.clientId,
-    clientID: config.dashboard.clientId,
     clientSecret: config.dashboard.clientSecret,
-    callbackURL: config.dashboard.callbackUrl,
+    callbackUrl: config.dashboard.callbackUrl,
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
     // Validamos permisos AQUÍ (al loguear) para no dejar pasar a cualquiera
