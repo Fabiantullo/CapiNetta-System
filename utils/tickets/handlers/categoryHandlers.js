@@ -84,6 +84,8 @@ async function handleEditCategory(interaction) {
     const newDesc = interaction.options.getString('nuevo_descripcion');
     const newEmoji = interaction.options.getString('nuevo_emoji');
     const newRole = interaction.options.getRole('nuevo_rol');
+    const newRoleExtra1 = interaction.options.getRole('nuevo_rol_extra_1');
+    const newRoleExtra2 = interaction.options.getRole('nuevo_rol_extra_2');
     const newCat = interaction.options.getChannel('nueva_categoria');
 
     const updates = {};
@@ -92,7 +94,11 @@ async function handleEditCategory(interaction) {
     if (newEmoji) updates.emoji = newEmoji;
     if (newCat) updates.targetCategoryId = newCat.id;
 
-    if (newRole) updates.roleId = newRole.id; // Simplificado para este ejemplo
+    // Reemplazar lista de roles si se especifica alguno
+    const newRoles = [newRole, newRoleExtra1, newRoleExtra2].filter(Boolean).map(r => r.id);
+    if (newRoles.length > 0) {
+        updates.roleId = newRoles.length === 1 ? newRoles[0] : JSON.stringify(newRoles.slice(0, 3));
+    }
 
     if (Object.keys(updates).length === 0) {
         return interaction.reply({ content: "⚠️ No especificaste ningún cambio.", flags: [MessageFlags.Ephemeral] });
@@ -107,6 +113,7 @@ async function handleEditCategory(interaction) {
         if (newName) changes.push(`Nombre: **${newName}**`);
         if (newDesc) changes.push(`Desc: *${newDesc}*`);
         if (newEmoji) changes.push(`Emoji: ${newEmoji}`);
+        if (newRoles.length > 0) changes.push(`Roles: ${newRoles.map(id => `<@&${id}>`).join(', ')}`);
 
         return interaction.reply({ content: `✅ Categoría **${currentName}** actualizada.\n> ${changes.join('\n> ')}`, flags: [MessageFlags.Ephemeral] });
     } else {

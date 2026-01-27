@@ -8,6 +8,7 @@
 
 const { logError, sendLog } = require("../../utils/logger");
 const { saveUserRoles, getGuildSettings } = require("../../utils/dataHandler");
+const { getTicketByChannel, touchTicketActivity } = require("../../utils/tickets/db");
 
 module.exports = {
     name: "messageCreate",
@@ -18,6 +19,14 @@ module.exports = {
         // Verificar si el servidor está configurado
         const settings = await getGuildSettings(message.guild.id);
         if (!settings || !settings.isSetup) return;
+
+        // Marcar actividad en tickets para evitar pings por inactividad
+        if (message.channel.name && message.channel.name.startsWith('ticket-')) {
+            const ticket = await getTicketByChannel(message.channel.id);
+            if (ticket) {
+                await touchTicketActivity(message.channel.id);
+            }
+        }
 
         // ===== DETECCIÓN (SOLO FLOOD) =====
         const isScam = checkDuplicate(client, message);

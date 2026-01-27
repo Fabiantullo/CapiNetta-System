@@ -17,12 +17,16 @@ module.exports = {
     async execute(interaction) {
         const user = interaction.options.getUser('usuario');
 
+        const guildId = interaction.guild.id;
+
         // 1. Actualizar persistencia en DB
-        await saveWarnToDB(user.id, 0);
+        await saveWarnToDB(guildId, user.id, 0);
 
         // 2. Actualizar caché en memoria (si el bot mantiene un Map local)
         if (interaction.client.warnMap) {
-            interaction.client.warnMap.set(user.id, 0);
+            const guildMap = interaction.client.warnMap.get(guildId) || new Map();
+            guildMap.set(user.id, 0);
+            interaction.client.warnMap.set(guildId, guildMap);
         }
 
         await interaction.reply({ content: `✅ Historial limpio. Se han reseteado las advertencias de **${user.tag}**.`, flags: [MessageFlags.Ephemeral] });

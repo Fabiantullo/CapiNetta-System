@@ -26,6 +26,21 @@ async function createTicketDB(guildId, userId, categoryName) {
     }
 }
 
+async function getOpenTicketByUser(guildId, userId) {
+    try {
+        return await prisma.ticket.findFirst({
+            where: {
+                guildId,
+                userId,
+                status: { in: [TICKET_STATUS.OPEN, TICKET_STATUS.CLAIMED] }
+            }
+        });
+    } catch (error) {
+        console.error("Error getOpenTicketByUser:", error);
+        return null;
+    }
+}
+
 async function updateTicketChannel(ticketId, channelId) {
     try {
         await prisma.ticket.update({
@@ -77,6 +92,17 @@ async function getTicketByChannel(channelId) {
     } catch (error) {
         console.error("Error getTicketByChannel:", error);
         return null;
+    }
+}
+
+async function touchTicketActivity(channelId) {
+    try {
+        await prisma.ticket.updateMany({
+            where: { channelId },
+            data: { lastActivity: new Date() }
+        });
+    } catch (error) {
+        console.error("Error touchTicketActivity:", error);
     }
 }
 
@@ -132,5 +158,7 @@ module.exports = {
     closeTicketDB,
     getTicketByChannel,
     assignTicket,
-    logTicketActionDB
+    logTicketActionDB,
+    getOpenTicketByUser,
+    touchTicketActivity
 };

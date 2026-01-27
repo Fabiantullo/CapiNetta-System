@@ -41,12 +41,14 @@ module.exports = {
 
         const { client } = interaction;
 
-        // Obtener contador anterior del mapa en memoria (fallback 0)
-        let currentWarns = (client.warnMap.get(user.id) || 0) + 1;
+        // Obtener contador anterior del mapa en memoria (fallback 0) por guild
+        const guildMap = client.warnMap.get(interaction.guild.id) || new Map();
+        let currentWarns = (guildMap.get(user.id) || 0) + 1;
 
         // 1. Guardar Log Histórico y Estado
-        client.warnMap.set(user.id, currentWarns);
-        await saveWarnToDB(user.id, currentWarns); // DB Persistente
+        guildMap.set(user.id, currentWarns);
+        client.warnMap.set(interaction.guild.id, guildMap);
+        await saveWarnToDB(interaction.guild.id, user.id, currentWarns); // DB Persistente
         await addWarnLog(user.id, moderator.id, reason, currentWarns); // Log Auditoría
 
         // 2. Lógica de Sanción Escalonada
@@ -70,8 +72,9 @@ module.exports = {
                     await interaction.reply(`🔇 **${user.tag}** alcanzó 3 advertencias y fue silenciado temporalmente (${timeoutDuration} min).`);
 
                     // Resetear contador tras castigo cumplido (estrategia opcional)
-                    client.warnMap.set(user.id, 0);
-                    await saveWarnToDB(user.id, 0);
+                    guildMap.set(user.id, 0);
+                    client.warnMap.set(interaction.guild.id, guildMap);
+                    await saveWarnToDB(interaction.guild.id, user.id, 0);
                 } catch (err) {
                     await interaction.reply(`⚠️ Warn registrado (${currentWarns}), pero no pude aplicar timeout (Error de jerarquía).`);
                 }

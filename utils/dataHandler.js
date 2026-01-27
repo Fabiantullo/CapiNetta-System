@@ -12,8 +12,8 @@ const { prisma } = require('./database');
 
 /**
  * Carga los warns y roles persistidos desde la DB al iniciar.
- * @returns {Promise<Map>} Mapa con estructura { userId: count }
- * Nota: Los roles se cargan bajo demanda generalmente, pero aquí mantenemos el mapa de warns para cache.
+ * @returns {Promise<Map>} Mapa con estructura { guildId: Map<userId, count> }
+ * Nota: Se cachea por guild para evitar mezclar contadores entre servidores.
  */
 async function getWarnsFromDB() {
     const warnMap = new Map();
@@ -21,7 +21,8 @@ async function getWarnsFromDB() {
         const warns = await prisma.warn.findMany();
 
         warns.forEach(row => {
-            warnMap.set(row.userId, row.count);
+            if (!warnMap.has(row.guildId)) warnMap.set(row.guildId, new Map());
+            warnMap.get(row.guildId).set(row.userId, row.count);
         });
         return warnMap;
     } catch (error) {
@@ -36,21 +37,11 @@ async function getWarnsFromDB() {
  * @param {number} count
  * @param {Array} roles (Opcional) Roles a persistir
  */
-async function saveWarnToDB(userId, count, roles = null) {
-    // Necesitamos el guildId. En esta arquitectura actual parece que dataHandler asume un guild por defecto o se debería pasar.
-    // Revisando el código SQL anterior: `INSERT ... ON DUPLICATE KEY UPDATE`
-    // El código original asumía que warns tenía guildId. 
-    // Para no romper la firma del método, usaremos el guildId del config general si no se pasa, o intentaremos inferirlo.
-    // IMPORTANTE: Prisma requiere todos los campos de @id.
-    // Vemos que la firma original era `saveWarnToDB(userId, count)`.
-
-    // WORKAROUND: Como la firma original no tenía guildId explícito, asumiremos el del archivo config para mantener compatibilidad,
-    // o deberíamos refactorizar quien lo llama.
-    // Mirando `warn.js`, llama a `saveWarnToDB(user.id, currentWarns)`.
-    // Vamos a importar config para obtener el GUILD_ID.
-
-    const config = require('../config');
-    const guildId = config.general.guildId; // Fallback seguro
+async function saveWarnToDB(guildId, userId, count, roles = null) {
+    if (!guildId) {
+        console.error("Error saving warn: guildId requerido");
+        return;
+    }
 
     try {
         const dataToUpdate = { count };

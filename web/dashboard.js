@@ -7,12 +7,31 @@ const session = require('express-session');
 const passport = require('passport');
 const { Strategy } = require('passport-discord');
 const { PermissionsBitField } = require('discord.js');
+const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const { prisma } = require('../utils/database');
 const config = require('../config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Confianza en proxy para que secure cookies funcionen detrás de Nginx/Cloudflare
+app.set('trust proxy', 1);
+
+// Seguridad HTTP básica
+app.use(helmet({
+    contentSecurityPolicy: false // desactivamos CSP por EJS sin nonce; se puede afinar luego
+}));
+
+// Rate limiting suave para endpoints públicos
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false
+}));
 
 // Servir archivos estáticos desde la carpeta 'public'
 app.use(express.static('web/public'));
@@ -62,34 +81,74 @@ app.set('view engine', 'ejs');
 app.set('views', './views');
 
 app.use(session({
+    name: 'capi-dashboard.sid',
     secret: config.dashboard.sessionSecret,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 12 // 12h de sesión
+    }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Middleware de Protección
-function checkAuth(req, res, next) {
-    if (req.isAuthenticated()) return next();
-    res.redirect('/auth/discord');
+// Middleware de Protección: requiere sesión válida y refresca permisos con el bot
+async function checkAuth(req, res, next) {
+    if (!req.isAuthenticated()) return res.redirect('/auth/discord');
+
+    const discordClient = app.locals.discordClient;
+    if (!discordClient) {
+        return res.status(503).send('Dashboard sin conexión al bot.');
+    }
+
+    try {
+        const guild = await discordClient.guilds.fetch(config.general.guildId);
+        const member = await guild.members.fetch(req.user.id);
+
+        if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return res.redirect('/access-denied');
+        }
+
+        // Adjuntar miembro para uso en vistas si hace falta
+        req.discordMember = member;
+        return next();
+    } catch (err) {
+        return res.status(403).send('No se pudo validar permisos en el servidor.');
+    }
 }
 
 // =============================================================================
 //                             RUTAS AUTH
 // =============================================================================
 
-app.get('/auth/discord', passport.authenticate('discord'));
+// Ruta de login: genera state aleatorio para evitar CSRF y replays
+app.get('/auth/discord', (req, res, next) => {
+    const state = crypto.randomBytes(16).toString('hex');
+    req.session.oauthState = state;
+    passport.authenticate('discord', { state })(req, res, next);
+});
 
-app.get('/auth/discord/callback', passport.authenticate('discord', {
-    failureRedirect: '/access-denied' // Podríamos crear esta vista
+// Callback: valida state antes de completar el login
+app.get('/auth/discord/callback', (req, res, next) => {
+    if (!req.session.oauthState || req.query.state !== req.session.oauthState) {
+        return res.status(403).send('Invalid OAuth state.');
+    }
+    delete req.session.oauthState;
+    next();
+}, passport.authenticate('discord', {
+    failureRedirect: '/access-denied'
 }), (req, res) => {
     res.redirect('/');
 });
 
 app.get('/logout', (req, res) => {
-    req.logout(() => res.redirect('/'));
+    req.logout(() => {
+        req.session.destroy(() => res.redirect('/'));
+    });
 });
 
 app.get('/access-denied', (req, res) => {
@@ -125,13 +184,15 @@ app.get('/', checkAuth, async (req, res) => {
             const guild = client.guilds.cache.get(config.general.guildId);
 
             if (guild) {
-                discordStats.online = guild.memberCount; // Aproximado, idealmente filtrar por presencia si fetchMembers se hizo
+                const presences = guild.presences?.cache || guild.members.cache;
+                discordStats.online = guild.memberCount;
                 discordStats.voice = guild.members.cache.filter(m => m.voice.channel).size;
                 discordStats.ping = client.ws.ping;
 
-                // Staff Online logic (Simplificada para dashboard)
+                // Staff Online logic (con presencia cuando está disponible)
                 discordStats.staff = guild.members.cache.filter(m =>
-                    !m.user.bot && (m.presence && m.presence.status !== 'offline') &&
+                    !m.user.bot &&
+                    (presences.get(m.id)?.status || m.presence?.status) !== 'offline' &&
                     (m.permissions.has(PermissionsBitField.Flags.ModerateMembers) || m.permissions.has(PermissionsBitField.Flags.Administrator))
                 ).size;
             }
@@ -154,11 +215,27 @@ app.get('/', checkAuth, async (req, res) => {
 
 // Ruta para ver Tickets (PROTEGIDA)
 app.get('/tickets', checkAuth, async (req, res) => {
+    const { status, type, claimed } = req.query;
+
+    const where = {};
+    if (status && ['open', 'claimed', 'closed', 'archived'].includes(status)) where.status = status;
+    if (type) where.type = type;
+    if (claimed === 'true') where.claimedBy = { not: null };
+    if (claimed === 'false') where.claimedBy = null;
+
     const tickets = await prisma.ticket.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
-        take: 50
+        take: 100
     });
-    res.render('tickets', { tickets, user: req.user });
+
+    // Distinct types for filter UI
+    const types = await prisma.ticket.groupBy({
+        by: ['type'],
+        _count: { type: true }
+    });
+
+    res.render('tickets', { tickets, user: req.user, filters: { status, type, claimed }, types });
 });
 
 // Ruta para ver Logs Completos (PROTEGIDA)

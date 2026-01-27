@@ -62,17 +62,29 @@ async function handleSendPanel(interaction) {
     if (categories.length === 0) return interaction.reply({ content: "⚠️ Primero debes añadir categorías con `/ticket add`.", flags: [MessageFlags.Ephemeral] });
 
     const payload = generatePanelPayload(categories);
-    const channel = interaction.channel;
+    const targetChannel = interaction.options.getChannel('canal') || interaction.channel;
 
-    const sentMessage = await channel.send(payload);
+    // Confirmación para evitar enviarlo en un canal equivocado
+    await interaction.reply({ content: `Vas a publicar el panel en ${targetChannel}. Confirmá con ✅`, flags: [MessageFlags.Ephemeral] });
+    const msg = await interaction.fetchReply();
+    await msg.react('✅');
+
+    const filter = (reaction, user) => reaction.emoji.name === '✅' && user.id === interaction.user.id;
+    try {
+        await msg.awaitReactions({ filter, max: 1, time: 15000 });
+    } catch {
+        return interaction.editReply({ content: 'Operación cancelada por timeout.', flags: [MessageFlags.Ephemeral] });
+    }
+
+    const sentMessage = await targetChannel.send(payload);
 
     // Guardamos la ubicación del panel para Auto-Updates
     await updateGuildSettings(interaction.guild.id, {
-        ticketPanelChannel: channel.id,
+        ticketPanelChannel: targetChannel.id,
         ticketPanelMessage: sentMessage.id
     });
 
-    return interaction.reply({ content: "✅ Panel enviado y vinculado para actualizaciones automáticas.", flags: [MessageFlags.Ephemeral] });
+    return interaction.editReply({ content: "✅ Panel enviado y vinculado para actualizaciones automáticas.", flags: [MessageFlags.Ephemeral] });
 }
 
 module.exports = { handleSendPanel, generatePanelPayload };

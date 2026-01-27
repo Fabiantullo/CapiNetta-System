@@ -10,6 +10,10 @@ const os = require('os');
 const { execSync } = require('child_process');
 const { prisma } = require('../../../utils/database');
 
+// Cache simple para evitar spam: 10 segundos
+let lastStatsPayload = null;
+let lastStatsTs = 0;
+
 /**
  * Genera una barra de progreso visual ASCII.
  */
@@ -32,12 +36,19 @@ module.exports = {
 
         await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-        // --- PRE-FETCH (Vital para Staff/Voice exactos) ---
-        // Forzamos la carga de miembros para que el filtro de roles/permisos funcione bien
-        try {
-            await guild.members.fetch();
-        } catch (e) {
-            console.log("Error fetching members:", e);
+        // Si el comando se spamea, devolver cache reciente
+        if (Date.now() - lastStatsTs < 10_000 && lastStatsPayload) {
+            return interaction.editReply(lastStatsPayload);
+        }
+
+        // --- PRE-FETCH CONTROLADO ---
+        // Evitamos rate limits en servidores grandes; solo hacemos fetch completo si es un guild pequeño.
+        if (guild.memberCount <= 200 && guild.members.cache.size < guild.memberCount) {
+            try {
+                await guild.members.fetch();
+            } catch (e) {
+                console.log("Stats: fetch members skipped (", e.message, ")");
+            }
         }
 
         // --- 1. DATOS DEL SISTEMA (OS & NODE) ---
@@ -49,6 +60,12 @@ module.exports = {
         const memUsagePercent = ((usedMem / totalMem) * 100).toFixed(1);
         const usedMemMB = (usedMem / 1024 / 1024).toFixed(0);
         const totalMemMB = (totalMem / 1024 / 1024).toFixed(0);
+
+        // Heap de Node
+        const heap = process.memoryUsage();
+        const heapUsedMB = (heap.heapUsed / 1024 / 1024).toFixed(0);
+        const heapTotalMB = (heap.heapTotal / 1024 / 1024).toFixed(0);
+        const rssMB = (heap.rss / 1024 / 1024).toFixed(0);
 
         const uptime = process.uptime();
         const days = Math.floor(uptime / 86400);
@@ -68,15 +85,17 @@ module.exports = {
             dbPing = Date.now() - startStr;
             dbStatus = `🟢 Conectado (${dbPing}ms)`;
 
-            const [totalT, openT, unclaimedT, totalW, totalE] = await Promise.all([
+            const [totalT, openT, unclaimedT, closedT, archivedT, totalW, totalE] = await Promise.all([
                 prisma.ticket.count(),
                 prisma.ticket.count({ where: { status: 'open' } }),
                 prisma.ticket.count({ where: { status: 'open', claimedBy: null } }),
+                prisma.ticket.count({ where: { status: 'closed' } }),
+                prisma.ticket.count({ where: { status: 'archived' } }),
                 prisma.warnLog.count(),
                 prisma.systemError.count()
             ]);
 
-            ticketStats = { total: totalT, open: openT, unclaimed: unclaimedT };
+            ticketStats = { total: totalT, open: openT, unclaimed: unclaimedT, closed: closedT, archived: archivedT };
             warnCount = totalW;
             errorCount = totalE;
 
@@ -87,24 +106,23 @@ module.exports = {
 
         // --- 3. DATOS DEL SERVIDOR (Discord) ---
         const totalMembers = guild.memberCount;
-        const botCount = guild.members.cache.filter(m => m.user.bot).size;
+        const cachedMembers = guild.members.cache;
+        const botCount = cachedMembers.filter(m => m.user.bot).size;
         const humanCount = totalMembers - botCount;
 
-        // Nuevos Miembros (Últimas 24h)
+        // Nuevos Miembros (Últimas 24h) — aproximado al caché disponible
         const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-        const newMembers = guild.members.cache.filter(m => m.joinedTimestamp > oneDayAgo).size;
+        const newMembers = cachedMembers.filter(m => m.joinedTimestamp && m.joinedTimestamp > oneDayAgo).size;
 
         // Usuarios en Voz
-        const voiceUsers = guild.members.cache.filter(m => m.voice.channel).size;
+        const voiceUsers = cachedMembers.filter(m => m.voice.channel).size;
 
-        // Staff Online (Mejorado: Incluye ModerateMembers y ManageMessages para Soportes)
-        const staffOnline = guild.members.cache.filter(m => {
+        // Staff Online (Mejorado: incluye Moderate/ManageMessages)
+        const staffOnline = cachedMembers.filter(m => {
             if (m.user.bot) return false;
-            // Estado: Online, Idle o DND (No offline)
-            const isOnline = m.presence && m.presence.status !== 'offline';
+            const presenceStatus = m.presence?.status || m.guild.presences?.cache.get(m.id)?.status;
+            const isOnline = presenceStatus && presenceStatus !== 'offline';
 
-            // Permisos: Admin, Kick, Ban, Mute (Moderate), Gestionar Mensajes
-            // Nota: Algunos roles de soporte pueden tener solo ManageMessages o ModerateMembers
             const hasPerms = m.permissions.has(PermissionFlagsBits.Administrator) ||
                 m.permissions.has(PermissionFlagsBits.KickMembers) ||
                 m.permissions.has(PermissionFlagsBits.BanMembers) ||
@@ -139,12 +157,12 @@ module.exports = {
             .addFields(
                 {
                     name: "🖥️ Sistema & Recursos",
-                    value: `> **CPU:** \`${cpuUsage}%\`\n> **RAM:** \`${usedMemMB}MB\` / \`${totalMemMB}MB\`\n> **Barra:** ${createProgressBar(usedMem, totalMem)}\n> **Uptime:** \`${days}d ${hours}h ${minutes}m\`\n> **Node/OS:** \`${process.version}\` on \`${os.platform()}\``,
+                    value: `> **CPU:** \`${cpuUsage}%\`\n> **RAM:** \`${usedMemMB}MB\` / \`${totalMemMB}MB\` (${memUsagePercent}%)\n> **Heap Node:** \`${heapUsedMB}MB\` / \`${heapTotalMB}MB\`\n> **RSS Proceso:** \`${rssMB}MB\`\n> **Barra:** ${createProgressBar(usedMem, totalMem)}\n> **Uptime:** \`${days}d ${hours}h ${minutes}m\`\n> **Node/OS:** \`${process.version}\` on \`${os.platform()}\``,
                     inline: true
                 },
                 {
                     name: "💾 Base de Datos",
-                    value: `> **Estado:** ${dbStatus}\n> **Tickets Totales:** \`${ticketStats.total}\`\n> **Tickets Abiertos:** \`${ticketStats.open}\`\n> **⚠️ Sin Atender:** \`${ticketStats.unclaimed}\`\n> **Warns / Errores:** \`${warnCount}\` / \`${errorCount}\``,
+                    value: `> **Estado:** ${dbStatus}\n> **Tickets Totales:** \`${ticketStats.total}\`\n> **Abiertos / Sin atender:** \`${ticketStats.open}\` / \`${ticketStats.unclaimed}\`\n> **Cerrados / Archivados:** \`${ticketStats.closed}\` / \`${ticketStats.archived}\`\n> **Warns / Errores:** \`${warnCount}\` / \`${errorCount}\``,
                     inline: true
                 }
             )
@@ -153,7 +171,7 @@ module.exports = {
             .addFields(
                 {
                     name: `🏰 Estadísticas de ${guild.name}`,
-                    value: `> **👥 Miembros:** \`${totalMembers}\` (👤${humanCount} | 🤖${botCount})\n> **📈 Crecimiento (24h):** \`+${newMembers}\` nuevos\n> **🎙️ En Voz:** \`${voiceUsers}\` usuarios activos\n> **👮 Staff Online:** \`${staffOnline}\` conectados\n> **🚀 Boosts:** Nivel ${boostLevel} (\`${boostCount}\` mejoras)\n> **💬 Canales:** \`${totalChannels}\` (📝${textChannels} | 🔊${voiceChannels})`,
+                    value: `> **👥 Miembros:** \`${totalMembers}\` (👤${humanCount} | 🤖${botCount})\n> **📈 Crecimiento (24h):** \`+${newMembers}\` (cache)\n> **🎙️ En Voz:** \`${voiceUsers}\` usuarios activos\n> **👮 Staff Online:** \`${staffOnline}\` conectados\n> **🚀 Boosts:** Nivel ${boostLevel} (\`${boostCount}\` mejoras)\n> **💬 Canales:** \`${totalChannels}\` (📝${textChannels} | 🔊${voiceChannels})`,
                     inline: false
                 }
             )
@@ -168,6 +186,9 @@ module.exports = {
             .setFooter({ text: `Capi Netta RP System • Solicitado por ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
-        return interaction.editReply({ embeds: [embed] });
+        lastStatsPayload = { embeds: [embed] };
+        lastStatsTs = Date.now();
+
+        return interaction.editReply(lastStatsPayload);
     }
 };

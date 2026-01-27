@@ -11,6 +11,53 @@ const Components = require('../views/components');
 const { parseRoleIds } = require('../constants');
 const { getGuildSettings } = require('../../dataHandler');
 
+// Recordatorio de inactividad para que el staff no se pierda tickets
+const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutos
+const INACTIVITY_RETRY_MS = 60 * 60 * 1000; // segundo ping a la hora
+const inactivityTimers = new Map();
+
+function scheduleInactivityPing(channel, allowedRolesIds, attempt = 1) {
+    if (!allowedRolesIds || allowedRolesIds.length === 0) return;
+
+    clearInactivityPing(channel.id);
+
+    const delay = attempt === 1 ? INACTIVITY_MS : INACTIVITY_RETRY_MS;
+
+    const timer = setTimeout(async () => {
+        try {
+            const ticket = await DB.getTicketByChannel(channel.id);
+            if (!ticket) return;
+
+            // Solo ping si sigue abierto/reclamado y han pasado al menos delay desde lastActivity
+            if (![ 'open', 'claimed' ].includes(ticket.status)) return;
+            const lastTs = ticket.lastActivity ? new Date(ticket.lastActivity).getTime() : 0;
+            if (Date.now() - lastTs < delay) return;
+
+            const mention = allowedRolesIds.map(id => `<@&${id}>`).join(' ');
+            await channel.send({ content: `⏰ Recordatorio ${attempt === 1 ? 'inicial' : 'final'}: este ticket lleva inactivo. ${mention}` });
+
+            // Programar un segundo ping solo una vez (max 2 intentos)
+            if (attempt === 1) {
+                scheduleInactivityPing(channel, allowedRolesIds, 2);
+            }
+        } catch (e) {
+            console.error('Error inactivity ping:', e);
+        } finally {
+            if (attempt === 2) inactivityTimers.delete(channel.id);
+        }
+    }, delay);
+
+    inactivityTimers.set(channel.id, timer);
+}
+
+function clearInactivityPing(channelId) {
+    const timer = inactivityTimers.get(channelId);
+    if (timer) {
+        clearTimeout(timer);
+        inactivityTimers.delete(channelId);
+    }
+}
+
 async function logTicketActionDiscord(guild, action, ticketChannel, executor, target = null) {
     try {
         const settings = await getGuildSettings(guild.id);
@@ -32,6 +79,15 @@ async function createTicketProcess(interaction, categoryName) {
 
         const categoryData = await DB.getCategoryByName(interaction.guild.id, categoryName);
         if (!categoryData) return interaction.editReply({ content: "❌ Error: La categoría configurada ya no existe." });
+
+        // Evitar tickets duplicados por usuario (abierto o reclamado)
+        const existing = await DB.getOpenTicketByUser(interaction.guild.id, interaction.user.id);
+        if (existing) {
+            return interaction.editReply({
+                content: `⚠️ Ya tienes un ticket abierto: <#${existing.channelId || 'pendiente'}> (ID ${existing.ticketId}). Cierra el anterior antes de crear otro.`,
+                flags: [MessageFlags.Ephemeral]
+            });
+        }
 
         const ticketId = await DB.createTicketDB(interaction.guild.id, interaction.user.id, categoryName);
         if (!ticketId) return interaction.editReply({ content: "❌ Error fatal de Base de Datos." });
@@ -63,6 +119,7 @@ async function createTicketProcess(interaction, categoryName) {
         const row = Components.getTicketControls(false);
 
         await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [row] });
+        scheduleInactivityPing(ticketChannel, allowedRolesIds);
         await interaction.editReply({ content: `✅ Ticket creado exitosamente: ${ticketChannel}` });
 
     } catch (e) {
@@ -73,6 +130,8 @@ async function createTicketProcess(interaction, categoryName) {
 
 async function executeClaim(interaction, ticket) {
     const { channel, user, guild } = interaction;
+
+    clearInactivityPing(channel.id);
 
     await DB.assignTicket(channel.id, user.id);
     await logTicketActionDiscord(guild, "Ticket Reclamado", channel, user);
@@ -117,6 +176,7 @@ async function requestClose(interaction) {
 
 async function executeClose(interaction, ticket) {
     const { channel, guild, user } = interaction;
+    clearInactivityPing(channel.id);
     await interaction.update({ content: '🔒 Procesando cierre y generando transcript...', components: [] });
 
     try {

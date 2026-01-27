@@ -58,7 +58,8 @@ module.exports = {
         )
         .addSubcommand(sub =>
             sub.setName('panel')
-                .setDescription('Enviar el panel de creación de tickets a este canal')
+                .setDescription('Enviar el panel de creación de tickets a un canal')
+                .addChannelOption(opt => opt.setName('canal').setDescription('Canal destino del panel').addChannelTypes(ChannelType.GuildText))
         )
         .addSubcommand(sub =>
             sub.setName('setlogs')

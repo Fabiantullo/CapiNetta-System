@@ -4,9 +4,7 @@ const requiredVars = [
     'GENERAL_TOKEN',
     'GENERAL_GUILD_ID',
     'GENERAL_VERIFY_CHANNEL',
-    'DB_USER',
-    'DB_PASSWORD',
-    'DB_NAME',
+    'DATABASE_URL',
     'WHITELIST_TOKEN',
     'GENERAL_CLIENT_ID',
     'GENERAL_CLIENT_SECRET',
@@ -44,10 +42,7 @@ module.exports = {
         warnTimeoutMinutes: 10
     },
     database: {
-        host: process.env.DB_HOST || 'localhost',
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME
+        url: process.env.DATABASE_URL
     },
     whitelist: {
         token: process.env.WHITELIST_TOKEN,
