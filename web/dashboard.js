@@ -12,7 +12,10 @@ const { prisma } = require('../utils/database');
 const config = require('../config');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// Servir archivos estáticos desde la carpeta 'public'
+app.use(express.static('web/public'));
 
 // =============================================================================
 //                             CONFIGURACIÓN PASSPORT
@@ -100,15 +103,49 @@ app.get('/access-denied', (req, res) => {
 // Ruta Principal: Home con Estadísticas (PROTEGIDA)
 app.get('/', checkAuth, async (req, res) => {
     try {
-        const [users, tickets, warns] = await Promise.all([
-            prisma.warn.count(),
+        const [usersWarned, ticketsOpen, warnsAggregate, activityLogs] = await Promise.all([
+            prisma.warn.count(), // Cantidad de usuarios con warns
             prisma.ticket.count({ where: { status: 'open' } }),
-            prisma.activityLog.count()
+            prisma.warn.aggregate({ _sum: { count: true } }), // Suma total de warns
+            prisma.activityLog.findMany({ orderBy: { timestamp: 'desc' }, take: 10 }) // Últimos 10 logs
         ]);
 
+        const warnsTotal = warnsAggregate._sum.count || 0;
+
+        // Datos de Discord (Si el cliente está disponible)
+        let discordStats = {
+            online: 0,
+            voice: 0,
+            staff: 0,
+            ping: 0
+        };
+
+        if (app.locals.discordClient) {
+            const client = app.locals.discordClient;
+            const guild = client.guilds.cache.get(config.general.guildId);
+
+            if (guild) {
+                discordStats.online = guild.memberCount; // Aproximado, idealmente filtrar por presencia si fetchMembers se hizo
+                discordStats.voice = guild.members.cache.filter(m => m.voice.channel).size;
+                discordStats.ping = client.ws.ping;
+
+                // Staff Online logic (Simplificada para dashboard)
+                discordStats.staff = guild.members.cache.filter(m =>
+                    !m.user.bot && (m.presence && m.presence.status !== 'offline') &&
+                    (m.permissions.has(PermissionsBitField.Flags.ModerateMembers) || m.permissions.has(PermissionsBitField.Flags.Administrator))
+                ).size;
+            }
+        }
+
         res.render('index', {
-            user: req.user, // Pasamos datos del usuario logueado
-            stats: { users, tickets, warns }
+            user: req.user,
+            stats: {
+                usersWarned,
+                ticketsOpen,
+                warnsTotal,
+                ...discordStats
+            },
+            logs: activityLogs
         });
     } catch (error) {
         res.send("Error cargando dashboard: " + error.message);
@@ -124,8 +161,20 @@ app.get('/tickets', checkAuth, async (req, res) => {
     res.render('tickets', { tickets, user: req.user });
 });
 
+// Ruta para ver Logs Completos (PROTEGIDA)
+app.get('/logs', checkAuth, async (req, res) => {
+    const logs = await prisma.activityLog.findMany({
+        orderBy: { timestamp: 'desc' },
+        take: 100
+    });
+    res.render('logs', { logs, user: req.user });
+});
+
 // Función para iniciar el servidor
-function startDashboard() {
+function startDashboard(discordClient) {
+    // Guardamos el cliente en locals para acceder en rutas
+    app.locals.discordClient = discordClient;
+
     app.listen(PORT, () => {
         console.log(`🌐 Dashboard online en http://localhost:${PORT}`);
     });

@@ -37,7 +37,7 @@ process.on('uncaughtException', error => console.error('❌ [General] Uncaught E
         console.log("✅ [General] Warns cargados desde Base de Datos.");
 
         // 2. Iniciar Dashboard Web
-        startDashboard();
+        startDashboard(clientGeneral);
 
         // 3. Login Discord
         await clientGeneral.login(config.general.token);

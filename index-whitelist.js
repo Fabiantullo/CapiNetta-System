@@ -21,8 +21,11 @@ loadCommands(clientWhitelist, "bot-whitelist");
 process.on('unhandledRejection', error => console.error('❌ [Whitelist] Unhandled Rejection:', error));
 process.on('uncaughtException', error => console.error('❌ [Whitelist] Uncaught Exception:', error));
 
+const { initDB } = require("./utils/database");
+
 (async () => {
     try {
+        await initDB();
         await clientWhitelist.login(config.whitelist.token);
         console.log("✅ [Whitelist] Login exitoso.");
     } catch (err) {

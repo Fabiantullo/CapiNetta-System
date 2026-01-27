@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capi Netta | Tickets</title>
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="brand">CAPI NETTA RP</div>
+        <ul class="nav-links">
+            <li><a href="/">📊 Dashboard</a></li>
+            <li><a href="/tickets" class="active">🎫 Tickets</a></li>
+            <li><a href="/logs">📜 Logs Totales</a></li>
+        </ul>
+
+        <div class="user-info">
+            <% if (user.avatar) { %>
+                <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="user-avatar"
+                    alt="Avatar">
+                <% } else { %>
+                    <img src="https://cdn.discordapp.com/embed/avatars/0.png" class="user-avatar" alt="Avatar">
+                    <% } %>
+                        <div class="user-details">
+                            <div class="username">
+                                <%= user.username %>
+                            </div>
+                            <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                        </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <h1>🎫 Gestión de Tickets</h1>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Estado</th>
+                        <th>Creado Por</th>
+                        <th>Tipo</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% tickets.forEach(ticket=> { %>
+                        <tr>
+                            <td>#<%= ticket.ticketId %>
+                            </td>
+                            <td>
+                                <% if (ticket.status==='open' ) { %>
+                                    <span class="badge open">ABIERTO</span>
+                                    <% } else { %>
+                                        <span class="badge closed">CERRADO</span>
+                                        <% } %>
+                            </td>
+                            <td>
+                                <%= ticket.userId %>
+                            </td>
+                            <td>
+                                <%= ticket.type || 'N/A' %>
+                            </td>
+                            <td>
+                                <%= new Date(ticket.createdAt).toLocaleString() %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+</body>
+
+</html>

@@ -111,3 +111,17 @@ model TicketAction {
 
   @@map("ticket_actions")
 }
+
+// Logs de Whitelist
+model WhitelistLog {
+  id           Int      @id @default(autoincrement())
+  userId       String
+  userTag      String?
+  moderatorId  String
+  moderatorTag String?
+  action       String   @default("aprobado") // "aprobado", "rechazado"
+  note         String?  // Razon o nota opcional
+  timestamp    DateTime @default(now())
+
+  @@map("whitelist_logs")
+}

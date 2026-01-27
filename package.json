@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy": "node deploy-commands.js",
-    "start": "node index.js",
+    "deploy": "node deploy-general.js && node deploy-whitelist.js",
+    "deploy:general": "node deploy-general.js",
+    "deploy:whitelist": "node deploy-whitelist.js",
+    "start": "node index-general.js",
     "prod": "pm2 start ecosystem.config.js",
     "postinstall": "prisma generate",
-    "setup": "npm install && npx prisma generate && node deploy-commands.js && npm run prod"
+    "setup": "npm install && npx prisma generate && node deploy-general.js && node deploy-whitelist.js && npm run prod"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",

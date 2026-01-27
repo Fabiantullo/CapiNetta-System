@@ -8,6 +8,7 @@
 
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const config = require("../../../config");
+const { prisma } = require("../../../utils/database");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -25,6 +26,23 @@ module.exports = {
         const channel = await interaction.client.channels.fetch(config.whitelist.channelId);
 
         await sendWhitelistEmbed(channel, user, "aprobada", 0x2ecc71); // Verde
+
+        // LOGGING EN BASE DE DATOS
+        try {
+            await prisma.whitelistLog.create({
+                data: {
+                    userId: user.id,
+                    userTag: user.tag,
+                    moderatorId: interaction.user.id,
+                    moderatorTag: interaction.user.tag,
+                    action: "aprobado",
+                    note: "Aprobado mediante comando /aprobar"
+                }
+            });
+            console.log(`✅ Log de Whitelist guardado para ${user.tag}`);
+        } catch (error) {
+            console.error("❌ Error guardando log de whitelist:", error);
+        }
 
         await interaction.reply({ content: `✅ Whitelist de **${user.tag}** aprobada.`, flags: [MessageFlags.Ephemeral] });
     },
