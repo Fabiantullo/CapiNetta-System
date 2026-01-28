@@ -233,44 +233,10 @@
         }
     </style>
 
+    <script src="/js/dashboard-utils.js"></script>
     <script>
-        // Sistema de filtrado
-        const searchInput = document.getElementById('searchUser');
-        const filterButtons = document.querySelectorAll('.btn-filter-warns');
-        const tableRows = document.querySelectorAll('.warn-row');
-
-        let currentFilter = 'all';
-
-        // Búsqueda en tiempo real
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            filterRows(searchTerm, currentFilter);
-        });
-
-        // Filtros por categoría
-        filterButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentFilter = btn.dataset.filter;
-                filterRows(searchInput.value.toLowerCase(), currentFilter);
-            });
-        });
-
-        function filterRows(searchTerm, filter) {
-            tableRows.forEach(row => {
-                const userData = row.dataset.user;
-                const warnCount = parseInt(row.dataset.warns);
-                
-                const matchesSearch = userData.includes(searchTerm);
-                const matchesFilter = 
-                    filter === 'all' ||
-                    (filter === 'high' && warnCount >= 3) ||
-                    (filter === 'medium' && warnCount >= 1 && warnCount < 3);
-
-                row.style.display = matchesSearch && matchesFilter ? '' : 'none';
-            });
-        }
+        // Inicializar sistema de filtrado especializado para warns
+        setupTableFiltering('searchUser', '.btn-filter-warns', '.warn-row', filterWarnsTable);
 
         // Ver historial de warns
         function viewHistory(userId, username) {
@@ -279,22 +245,27 @@
 
         // Resetear warns
         function resetWarns(userId, username) {
-            if (confirm(`¿Estás seguro de resetear todos los warns de ${username}?`)) {
-                fetch(`/warns/reset/${userId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Warns reseteados correctamente');
-                        location.reload();
-                    } else {
-                        alert('Error al resetear warns');
+            confirmAction(
+                `¿Estás seguro de resetear todos los warns de ${username}?`,
+                async () => {
+                    try {
+                        const response = await fetch(`/warns/reset/${userId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('✅ Warns reseteados correctamente');
+                            location.reload();
+                        } else {
+                            alert('❌ Error al resetear warns');
+                        }
+                    } catch (err) {
+                        alert('❌ Error de conexión');
                     }
-                })
-                .catch(err => alert('Error de conexión'));
-            }
+                }
+            );
         }
     </script>
 

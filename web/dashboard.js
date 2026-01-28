@@ -475,6 +475,178 @@ app.get('/warns', checkAuth, async (req, res) => {
     }
 });
 
+// =============================================================================
+//                          GESTIÓN DE ROLES
+// =============================================================================
+
+app.get('/roles', checkAuth, async (req, res) => {
+    try {
+        const guildId = req.selectedGuild.id;
+        const guild = app.locals.discordClient.guilds.cache.get(guildId);
+
+        if (!guild) {
+            return res.status(404).send('Servidor no encontrado');
+        }
+
+        // Obtener todos los roles
+        const allRoles = guild.roles.cache
+            .filter(role => !role.managed && role.id !== guildId) // Excluir roles manejados y @everyone
+            .map(role => ({
+                id: role.id,
+                name: role.name,
+                color: role.hexColor || '#808080',
+                memberCount: role.members.size,
+                permissions: Array.from(role.permissions.toArray()),
+                type: role.id === guildId ? 'default' : 'custom'
+            }))
+            .sort((a, b) => b.memberCount - a.memberCount);
+
+        // Obtener roles de staff desde la base de datos
+        const guildSettings = await prisma.guildSettings.findUnique({
+            where: { guildId }
+        });
+
+        const staffRoleIds = guildSettings?.staffRoles ? JSON.parse(guildSettings.staffRoles) : [];
+        
+        // Marcar roles de staff
+        const rolesWithType = allRoles.map(role => ({
+            ...role,
+            type: staffRoleIds.includes(role.id) ? 'staff' : 'custom'
+        }));
+
+        // Estadísticas
+        const totalRoles = rolesWithType.length;
+        const staffRolesCount = rolesWithType.filter(r => r.type === 'staff').length;
+        const assignedUsers = new Set(
+            rolesWithType.reduce((acc, role) => {
+                guild.roles.cache.get(role.id)?.members.forEach(member => {
+                    if (!member.user.bot) acc.push(member.id);
+                });
+                return acc;
+            }, [])
+        ).size;
+
+        // Contar permisos únicos
+        const allPermissions = new Set();
+        rolesWithType.forEach(role => {
+            role.permissions.forEach(perm => allPermissions.add(perm));
+        });
+
+        res.render('roles', {
+            roles: rolesWithType,
+            totalRoles,
+            staffRoles: staffRolesCount,
+            assignedUsers,
+            totalPermissions: allPermissions.size,
+            user: req.user,
+            selectedGuild: req.selectedGuild,
+            adminGuilds: req.adminGuilds
+        });
+    } catch (error) {
+        console.error('Error loading roles:', error);
+        res.status(500).send('Error al cargar la gestión de roles');
+    }
+});
+
+// =============================================================================
+//                    ENDPOINTS PARA EDITAR/ELIMINAR ROLES
+// =============================================================================
+
+// Editar rol (color y permisos)
+app.post('/roles/edit/:roleId', checkAuth, async (req, res) => {
+    try {
+        const guildId = req.selectedGuild.id;
+        const { roleId } = req.params;
+        const { color, permissions } = req.body;
+
+        const guild = app.locals.discordClient.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ message: 'Servidor no encontrado' });
+        }
+
+        const role = guild.roles.cache.get(roleId);
+        if (!role) {
+            return res.status(404).json({ message: 'Rol no encontrado' });
+        }
+
+        // Validar que no sea un rol manejado por Discord
+        if (role.managed) {
+            return res.status(403).json({ message: 'No puedes editar roles manejados por Discord' });
+        }
+
+        // Convertir permisos a BitField
+        const { PermissionsBitField } = require('discord.js');
+        const permissionBits = new PermissionsBitField(permissions);
+
+        // Actualizar el rol
+        await role.edit({
+            color: color || role.color,
+            permissions: permissionBits,
+            reason: 'Editado desde el Dashboard'
+        });
+
+        res.json({
+            success: true,
+            message: 'Rol actualizado correctamente'
+        });
+    } catch (error) {
+        console.error('Error updating role:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error al actualizar el rol'
+        });
+    }
+});
+
+// Eliminar rol
+app.post('/roles/delete/:roleId', checkAuth, async (req, res) => {
+    try {
+        const guildId = req.selectedGuild.id;
+        const { roleId } = req.params;
+
+        const guild = app.locals.discordClient.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ message: 'Servidor no encontrado' });
+        }
+
+        const role = guild.roles.cache.get(roleId);
+        if (!role) {
+            return res.status(404).json({ message: 'Rol no encontrado' });
+        }
+
+        // Validar que no sea un rol manejado por Discord o @everyone
+        if (role.managed || role.id === guildId) {
+            return res.status(403).json({ message: 'No puedes eliminar este rol' });
+        }
+
+        const roleName = role.name;
+
+        // Eliminar el rol
+        await role.delete('Eliminado desde el Dashboard');
+
+        // Registrar actividad
+        await prisma.activityLog.create({
+            data: {
+                guildId,
+                action: 'ROLE_DELETED',
+                target: roleName,
+                details: `Rol "${roleName}" (${roleId}) eliminado`
+            }
+        });
+
+        res.json({
+            success: true,
+            message: `Rol "${roleName}" eliminado correctamente`
+        });
+    } catch (error) {
+        console.error('Error deleting role:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error al eliminar el rol'
+        });
+    }
+});
+
 // Endpoint para resetear warns
 app.post('/warns/reset/:userId', checkAuth, async (req, res) => {
     try {

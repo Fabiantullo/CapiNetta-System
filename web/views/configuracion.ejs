@@ -30,7 +30,7 @@
             <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
             <li><a href="/configuracion" class="active">⚙️ Configuración</a></li>
             <li><a href="/warns">⚠️ Sistema de Warns</a></li>
-            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">👑 Gestión de Roles</a></li>
+            <li><a href="/roles">👑 Gestión de Roles</a></li>
             <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">📢 Canales</a></li>
             <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">📈 Estadísticas</a></li>
             <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
@@ -248,34 +248,9 @@
 
 </body>
 
+<script src="/js/sidebar.js"></script>
+
 <script>
-    // Toggle sidebar
-    const hamburger = document.getElementById('hamburger');
-    const sidebar = document.getElementById('sidebar');
-
-    if (hamburger) {
-        hamburger.addEventListener('click', () => {
-            sidebar.classList.toggle('hidden');
-        });
-
-        const links = sidebar.querySelectorAll('a');
-        links.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.add('hidden');
-                }
-            });
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.add('hidden');
-                }
-            }
-        });
-    }
-
     // Auto-hide alerts
     setTimeout(() => {
         const alerts = document.querySelectorAll('.alert');

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Gestión de Roles | <%= selectedGuild.name %></title>
+    <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <%- include('partials/sidebar') %>
+
+    <div class="main-content">
+        <%- include('partials/server-selector', { selectedGuild, adminGuilds }) %>
+
+        <div class="content-wrapper">
+            <!-- Página Header -->
+            <div class="page-header">
+                <h1><i class="fas fa-crown"></i> Gestión de Roles</h1>
+                <p>Administra los roles, permisos y asignaciones del servidor</p>
+            </div>
+
+            <!-- Estadísticas de Roles -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: var(--accent-color);">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value"><%= totalRoles %></div>
+                        <div class="stat-label">Total de Roles</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: #3498db;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value"><%= assignedUsers %></div>
+                        <div class="stat-label">Usuarios con Roles</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: #2ecc71;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value"><%= staffRoles %></div>
+                        <div class="stat-label">Roles de Staff</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: #f39c12;">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value"><%= totalPermissions %></div>
+                        <div class="stat-label">Permisos Totales</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters-section">
+                <div class="filters-wrapper">
+                    <input type="text" id="searchRole" class="search-input" placeholder="🔍 Buscar roles...">
+                    
+                    <div>
+                        <button class="btn-filter-roles active" data-filter="all">
+                            <i class="fas fa-list"></i> Todos
+                        </button>
+                        <button class="btn-filter-roles" data-filter="staff">
+                            <i class="fas fa-shield-alt"></i> Staff
+                        </button>
+                        <button class="btn-filter-roles" data-filter="custom">
+                            <i class="fas fa-pencil-alt"></i> Personalizados
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Roles -->
+            <div class="table-wrapper">
+                <table class="table-data">
+                    <thead>
+                        <tr>
+                            <th>Nombre del Rol</th>
+                            <th>ID</th>
+                            <th>Miembros</th>
+                            <th>Tipo</th>
+                            <th>Permisos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rolesTable">
+                        <% if (roles.length === 0) { %>
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <i class="fas fa-info-circle"></i>
+                                    <p>No hay roles configurados en este servidor</p>
+                                </td>
+                            </tr>
+                        <% } else { %>
+                            <% roles.forEach(role => { %>
+                                <tr class="role-row" data-role-id="<%= role.id %>" data-type="<%= role.type %>" data-name="<%= role.name.toLowerCase() %>">
+                                    <td>
+                                        <span class="role-color-dot" style="background: <%= role.color || '#808080' %>;"></span>
+                                        <span class="role-name"><%= role.name %></span>
+                                    </td>
+                                    <td>
+                                        <code style="background: var(--bg-secondary); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
+                                            <%= role.id %>
+                                        </code>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-members">
+                                            <%= role.memberCount %> miembro<%= role.memberCount !== 1 ? 's' : '' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <% if (role.type === 'staff') { %>
+                                            <span class="badge badge-staff">
+                                                <i class="fas fa-shield-alt"></i> Staff
+                                            </span>
+                                        <% } else { %>
+                                            <span class="badge badge-custom">
+                                                <i class="fas fa-pencil-alt"></i> Personalizado
+                                            </span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <% if (role.permissions && role.permissions.includes('ADMINISTRATOR')) { %>
+                                                <span class="badge-perm">ADM</span>
+                                            <% } %>
+                                            <% if (role.permissions && role.permissions.length > 1) { %>
+                                                <span class="badge-perm">+<%= role.permissions.length - 1 %></span>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-action" onclick="editRole('<%= role.id %>', '<%= role.name %>')">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </button>
+                                            <% if (role.type === 'custom') { %>
+                                                <button class="btn-action btn-action-danger" onclick="deleteRole('<%= role.id %>', '<%= role.name %>')">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Información de Permisos Clave -->
+            <div class="info-section">
+                <h2><i class="fas fa-book"></i> Permisos Clave</h2>
+            </div>
+            <div class="info-cards">
+                <div class="info-card" style="border-left-color: #e74c3c;">
+                    <h3><i class="fas fa-crown"></i> Administrador</h3>
+                    <p>Acceso completo a todas las funciones del servidor</p>
+                </div>
+                <div class="info-card" style="border-left-color: #f39c12;">
+                    <h3><i class="fas fa-cog"></i> Gestionar Servidor</h3>
+                    <p>Permite modificar configuración del servidor</p>
+                </div>
+                <div class="info-card" style="border-left-color: #3498db;">
+                    <h3><i class="fas fa-gavel"></i> Moderar</h3>
+                    <p>Posibilidad de sancionar miembros del servidor</p>
+                </div>
+                <div class="info-card" style="border-left-color: #2ecc71;">
+                    <h3><i class="fas fa-comments"></i> Mensajes</h3>
+                    <p>Enviar, editar y eliminar mensajes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Rol -->
+    <div class="modal-overlay" id="editRoleModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Editar Rol</h2>
+                <button class="modal-close" onclick="closeModal('editRoleModal')">×</button>
+            </div>
+            <div id="editRoleAlert"></div>
+            <form id="editRoleForm" onsubmit="submitEditRole(event)">
+                <div class="form-group">
+                    <label for="editRoleName">Nombre del Rol</label>
+                    <input type="text" id="editRoleName" required readonly style="opacity: 0.7;">
+                    <small style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; display: block;">
+                        ℹ️ El nombre debe editarse desde Discord (por permisos)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="editRoleColor">Color del Rol</label>
+                    <input type="color" id="editRoleColor">
+                </div>
+
+                <div class="form-group">
+                    <label>Permisos Principales</label>
+                    <div class="permission-group">
+                        <div class="permission-item">
+                            <input type="checkbox" id="perm-admin" value="ADMINISTRATOR" onchange="updatePermissions()">
+                            <label for="perm-admin">Administrador (Acceso Total)</label>
+                        </div>
+                        <div class="permission-item">
+                            <input type="checkbox" id="perm-manage-guild" value="MANAGE_GUILD" onchange="updatePermissions()">
+                            <label for="perm-manage-guild">Gestionar Servidor</label>
+                        </div>
+                        <div class="permission-item">
+                            <input type="checkbox" id="perm-kick-members" value="KICK_MEMBERS" onchange="updatePermissions()">
+                            <label for="perm-kick-members">Expulsar Miembros</label>
+                        </div>
+                        <div class="permission-item">
+                            <input type="checkbox" id="perm-ban-members" value="BAN_MEMBERS" onchange="updatePermissions()">
+                            <label for="perm-ban-members">Banear Miembros</label>
+                        </div>
+                        <div class="permission-item">
+                            <input type="checkbox" id="perm-moderate-members" value="MODERATE_MEMBERS" onchange="updatePermissions()">
+                            <label for="perm-moderate-members">Moderar Miembros (Timeout)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="editRoleId">
+                <input type="hidden" id="editRolePermissions">
+
+                <div class="modal-actions">
+                    <button type="button" class="modal-btn modal-btn-secondary" onclick="closeModal('editRoleModal')">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="modal-btn modal-btn-primary">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Eliminar Rol -->
+    <div class="modal-overlay" id="deleteRoleModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-trash"></i> Eliminar Rol</h2>
+                <button class="modal-close" onclick="closeModal('deleteRoleModal')">×</button>
+            </div>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> Esta acción es irreversible
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                ¿Estás seguro de que deseas eliminar el rol <strong id="deleteRoleName" style="color: var(--text-primary);"></strong>?
+            </p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 24px;">
+                Todos los miembros que tengan este rol lo perderán automáticamente.
+            </p>
+            <input type="hidden" id="deleteRoleId">
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeModal('deleteRoleModal')">
+                    Cancelar
+                </button>
+                <button class="modal-btn modal-btn-danger" onclick="submitDeleteRole()">
+                    <i class="fas fa-trash"></i> Eliminar Rol
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard-utils.js"></script>
+    <script>
+        let selectedGuildId = '<%= selectedGuild.id %>';
+
+        // Inicializar sistema de filtrado
+        setupTableFiltering('searchRole', '.btn-filter-roles', '.role-row', filterRolesTable);
+        
+        // Inicializar modales
+        setupModalOverlays();
+
+        // Editar rol
+        function editRole(roleId, roleName) {
+            // Obtener datos del rol
+            const row = document.querySelector(`[data-role-id="${roleId}"]`);
+            
+            document.getElementById('editRoleId').value = roleId;
+            document.getElementById('editRoleName').value = roleName;
+            
+            // Cargar permisos actuales (esto es una simulación)
+            document.querySelectorAll('.permission-item input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+
+            openModal('editRoleModal');
+        }
+
+        // Eliminar rol
+        function deleteRole(roleId, roleName) {
+            document.getElementById('deleteRoleId').value = roleId;
+            document.getElementById('deleteRoleName').textContent = roleName;
+            openModal('deleteRoleModal');
+        }
+
+        // Actualizar permisos seleccionados
+        function updatePermissions() {
+            const selected = Array.from(document.querySelectorAll('.permission-item input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+            document.getElementById('editRolePermissions').value = JSON.stringify(selected);
+        }
+
+        // Enviar edición de rol
+        async function submitEditRole(event) {
+            event.preventDefault();
+            const roleId = document.getElementById('editRoleId').value;
+            const roleName = document.getElementById('editRoleName').value;
+            const roleColor = document.getElementById('editRoleColor').value;
+            
+            updatePermissions();
+            const permissions = document.getElementById('editRolePermissions').value;
+
+            try {
+                const response = await fetch(`/roles/edit/${roleId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        guildId: selectedGuildId,
+                        color: roleColor,
+                        permissions: JSON.parse(permissions)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('editRoleAlert', '✅ Rol actualizado correctamente', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('editRoleAlert', `❌ Error: ${data.message}`, 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('editRoleAlert', '❌ Error al actualizar el rol', 'danger');
+            }
+        }
+
+        // Enviar eliminación de rol
+        async function submitDeleteRole() {
+            const roleId = document.getElementById('deleteRoleId').value;
+
+            try {
+                const response = await fetch(`/roles/delete/${roleId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        guildId: selectedGuildId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    closeModal('deleteRoleModal');
+                    alert('✅ Rol eliminado correctamente');
+                    location.reload();
+                } else {
+                    alert(`❌ Error: ${data.message}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error al eliminar el rol');
+            }
+        }
+    </script>
+
+</body>
+</html>
