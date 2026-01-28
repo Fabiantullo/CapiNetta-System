@@ -271,19 +271,30 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     where: { guildId }
                 });
 
-                if (guildSettings?.staffRoles) {
+                console.log(`[DEBUG] Guild ${guildId} - staffRoles from DB:`, guildSettings?.staffRoles);
+
+                if (guildSettings?.staffRoles && guildSettings.staffRoles !== 'null') {
                     try {
                         const staffRoleIds = JSON.parse(guildSettings.staffRoles);
-                        discordStats.staff = guild.members.cache.filter(m => {
+                        console.log(`[DEBUG] Parsed staffRoleIds:`, staffRoleIds);
+                        
+                        const staffMembers = guild.members.cache.filter(m => {
                             if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
                             // Verificar si tiene al menos uno de los roles de staff configurados
-                            return m.roles.cache.some(role => staffRoleIds.includes(role.id));
-                        }).size;
+                            const isStaff = m.roles.cache.some(role => staffRoleIds.includes(role.id));
+                            if (isStaff) console.log(`[DEBUG] Staff found: ${m.user.username} (${m.id})`);
+                            return isStaff;
+                        });
+                        
+                        discordStats.staff = staffMembers.size;
+                        console.log(`[DEBUG] Total staff: ${discordStats.staff}`);
                     } catch (e) {
+                        console.error(`[ERROR] Parsing staffRoles: ${e.message}`);
                         discordStats.staff = 0;
                     }
                 } else {
                     // Fallback: si no hay roles configurados, usar permisos
+                    console.log(`[DEBUG] Using fallback permissions for staff counting`);
                     discordStats.staff = guild.members.cache.filter(m => {
                         if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
                         return m.roles.cache.some(role => 
