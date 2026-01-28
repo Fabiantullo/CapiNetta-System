@@ -36,7 +36,8 @@ module.exports = {
                 .addFields(
                     { name: '📡 Canales de Sistema', value: `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}\n> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}\n> **Verificación:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`, inline: true },
                     { name: '🎭 Gestión de Roles', value: `> **Usuario:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}\n> **Sin Verificar:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}\n> **Muteado:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`, inline: true },
-                    { name: '🚀 Módulos Especializados', value: `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *OFF*'}\n**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *OFF*'}`, inline: false }
+                    { name: '� Roles de Staff', value: (() => { try { const roles = s?.staffRoles ? JSON.parse(s.staffRoles) : []; return roles.length > 0 ? roles.map(r => `<@&${r}>`).join(' ') : '🔘 *Usando permisos*'; } catch { return '❌'; } })(), inline: false },
+                    { name: '�🚀 Módulos Especializados', value: `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *OFF*'}\n**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *OFF*'}`, inline: false }
                 )
                 .setFooter({ text: "Capi Netta System • Gestión de Alta Eficiencia" });
 
@@ -45,6 +46,7 @@ module.exports = {
                 new StringSelectMenuBuilder().setCustomId('cat_select').setPlaceholder('🎯 Elegí qué sección editar...').addOptions([
                     { label: 'Canales de Sistema', value: 'cat_channels', emoji: '📡' },
                     { label: 'Gestión de Roles', value: 'cat_roles', emoji: '🎭' },
+                    { label: 'Roles de Staff', value: 'cat_staff', emoji: '👮' },
                     { label: 'Módulos Avanzados', value: 'cat_modules', emoji: '🚀' }
                 ])
             );
@@ -70,6 +72,15 @@ module.exports = {
             // Nivel 1: Selección de Categoría -> Muestra sub-menú de campos
             if (i.customId === 'cat_select') {
                 const cat = i.values[0];
+                
+                // Caso especial: Staff Roles (múltiple selección)
+                if (cat === 'cat_staff') {
+                    const selector = new ActionRowBuilder().addComponents(
+                        new RoleSelectMenuBuilder().setCustomId('save_staff_roles').setPlaceholder('Seleccioná roles de staff...').setMinValues(0).setMaxValues(10)
+                    );
+                    return i.update({ content: `👮 Seleccioná todos los roles que sean Staff (para estadísticas)`, components: [selector] });
+                }
+                
                 const opts = cat === 'cat_channels' ? [
                     { label: 'Logs', value: 'logsChannel' }, { label: 'Debug', value: 'debugChannel' }, { label: 'Verif', value: 'verifyChannel' }
                 ] : cat === 'cat_roles' ? [
@@ -92,6 +103,21 @@ module.exports = {
                         : new ChannelSelectMenuBuilder().setCustomId('save').addChannelTypes(ChannelType.GuildText)
                 );
                 return i.update({ content: `🛠️ Seleccioná el nuevo valor para **${selectedField}**`, components: [selector] });
+            }
+
+            // Guardar Staff Roles (múltiples)
+            if (i.customId === 'save_staff_roles') {
+                await i.update({ content: `💾 Guardando roles de staff...`, components: [] });
+                try {
+                    const staffRolesJson = i.values.length > 0 ? JSON.stringify(i.values) : null;
+                    await updateGuildSettings(guild.id, { staffRoles: staffRolesJson });
+                    setTimeout(async () => {
+                        await interaction.editReply(await renderFullPanel());
+                    }, 1000);
+                } catch (err) {
+                    await interaction.editReply({ content: "❌ Error al guardar. Revisá la consola." });
+                }
+                return;
             }
 
             // Nivel 3: Guardar Valor (Acción Final)

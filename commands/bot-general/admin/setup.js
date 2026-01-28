@@ -30,7 +30,7 @@ module.exports = {
         let config = {
             logsChannel: null, verifyChannel: null, debugChannel: null,
             roleUser: null, roleNoVerify: null, roleMuted: null,
-            welcomeChannel: null, supportChannel: null, isSetup: true
+            welcomeChannel: null, supportChannel: null, staffRoles: [], isSetup: true
         };
 
         let step = 1; // Control de flujo del Wizard
@@ -55,8 +55,13 @@ module.exports = {
                     { name: "❓ Sin Verificar:", value: config.roleNoVerify ? `<@&${config.roleNoVerify}>` : "❌", inline: true },
                     { name: "🔇 Muteado:", value: config.roleMuted ? `<@&${config.roleMuted}>` : "❌", inline: true }
                 );
+            } else if (step === 3) {
+                embed.setDescription("### Paso 3: Roles de Staff\nSeleccioná los roles que se consideran Staff (aparecerán en estadísticas).");
+                embed.addFields(
+                    { name: "👮 Roles de Staff:", value: config.staffRoles.length > 0 ? config.staffRoles.map(r => `<@&${r}>`).join(', ') : "🔘 Opcional (se usarán permisos por defecto)", inline: false }
+                );
             } else {
-                embed.setDescription("### Paso 3: Módulos Opcionales");
+                embed.setDescription("### Paso 4: Módulos Opcionales");
                 embed.addFields(
                     { name: "👋 Bienvenida:", value: config.welcomeChannel ? `<#${config.welcomeChannel}>` : "🔘 Opcional", inline: true },
                     { name: "💬 Soporte:", value: config.supportChannel ? `<#${config.supportChannel}>` : "🔘 Opcional", inline: true }
@@ -79,6 +84,13 @@ module.exports = {
                 // Paso 2: RoleSelect (Max 3)
                 rows.push(new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('select_roles').setPlaceholder('Seleccionar roles...').setMaxValues(3)));
                 rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next').setLabel('Siguiente ➡️').setStyle(ButtonStyle.Primary).setDisabled(!config.roleUser || !config.roleMuted)));
+            } else if (step === 3) {
+                // Paso 3: RoleSelect para Staff (Hasta 10 roles)
+                rows.push(new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('select_staff_roles').setPlaceholder('Roles de Staff (opcional)...').setMinValues(0).setMaxValues(10)));
+                rows.push(new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('skip_staff').setLabel('Omitir ⏭️').setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder().setCustomId('next').setLabel('Siguiente ➡️').setStyle(ButtonStyle.Primary)
+                ));
             } else {
                 // Paso 3: ChannelSelect Opcional
                 rows.push(new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('select_optional').setPlaceholder('Canales opcionales...').addChannelTypes(ChannelType.GuildText).setMaxValues(2)));
@@ -104,6 +116,9 @@ module.exports = {
                 config.roleNoVerify = i.values[1] || config.roleNoVerify;
                 config.roleMuted = i.values[2] || config.roleMuted;
             }
+            if (i.customId === 'select_staff_roles') {
+                config.staffRoles = i.values; // Array de IDs de roles
+            }
             if (i.customId === 'select_optional') {
                 config.welcomeChannel = i.values[0];
                 config.supportChannel = i.values[1] || config.supportChannel;
@@ -111,9 +126,17 @@ module.exports = {
 
             // Navegación
             if (i.customId === 'next') step++;
+            if (i.customId === 'skip_staff') step++;
             if (i.customId === 'finish') {
                 try {
-                    await updateGuildSettings(guild.id, config);
+                    // Convertir staffRoles a JSON antes de guardar
+                    const finalConfig = { ...config };
+                    if (finalConfig.staffRoles && finalConfig.staffRoles.length > 0) {
+                        finalConfig.staffRoles = JSON.stringify(finalConfig.staffRoles);
+                    } else {
+                        finalConfig.staffRoles = null;
+                    }
+                    await updateGuildSettings(guild.id, finalConfig);
                     return i.update({ content: "🎉 **¡Configuración completada con éxito!**", embeds: [], components: [] });
                 } catch (err) {
                     logError(interaction.client, err, "Finalizar Setup Wizard", guild.id);
