@@ -50,29 +50,12 @@ passport.use(new Strategy({
     callbackUrl: config.dashboard.callbackUrl,
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
-    // Validamos permisos AQUÍ (al loguear) para no dejar pasar a cualquiera
-    // Buscamos si el usuario está en la guild configurada y es Admin
-
-    // NOTA: Para verificar permisos reales en la guild, idealmente deberíamos
-    // usar el cliente del bot, pero la API de OAuth nos da lista de guilds.
-    // OAuth Guild Object tiene: { id, name, icon, permissions (bitfield), ... }
-
+    // Solo validar que el usuario está en la guild
+    // Los permisos reales se validan en checkAuth middleware contra el servidor en vivo
     const targetGuild = profile.guilds.find(g => g.id === config.general.guildId);
 
     if (!targetGuild) {
         return done(null, false, { message: "No estás en el servidor de Capi Netta." });
-    }
-
-    // Chequeamos permiso de ADMINISTRATOR (0x00000008)
-    // El campo permissions viene como String numérico, necesita ser convertido a BigInt
-    let permissionValue = targetGuild.permissions;
-    if (typeof permissionValue === 'string') {
-        permissionValue = BigInt(permissionValue);
-    }
-    const permissions = new PermissionsBitField(permissionValue);
-
-    if (!permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return done(null, false, { message: "No tienes permisos de Administrador." });
     }
 
     process.nextTick(() => done(null, profile));
