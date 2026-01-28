@@ -9,19 +9,20 @@
         });
     }
 
-    // Server selector dropdown
-    const serverSelectorBtn = document.getElementById('serverSelectorBtn');
-    const serverDropdown = document.getElementById('serverDropdown');
+    // Server dropdown toggle
+    const serverDropdownBtn = document.getElementById('serverDropdown');
+    const serverMenu = document.getElementById('serverMenu');
     
-    if (serverSelectorBtn && serverDropdown) {
-        serverSelectorBtn.addEventListener('click', (e) => {
+    if (serverDropdownBtn && serverMenu) {
+        serverDropdownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
-            serverDropdown.classList.toggle('active');
+            serverMenu.classList.toggle('show');
         });
 
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.server-selector-container')) {
-                serverDropdown.classList.remove('active');
+            if (!e.target.closest('.server-dropdown')) {
+                serverMenu.classList.remove('show');
             }
         });
     }
