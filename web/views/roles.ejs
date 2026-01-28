@@ -178,7 +178,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h2><i class="fas fa-edit"></i> Editar Rol</h2>
-                <button class="modal-close" onclick="closeModal('editRoleModal')">×</button>
+                <button class="modal-close" data-modal-id="editRoleModal">×</button>
             </div>
             <div id="editRoleAlert"></div>
             <form id="editRoleForm" onsubmit="submitEditRole(event)">
@@ -199,23 +199,23 @@
                     <label>Permisos Principales</label>
                     <div class="permission-group">
                         <div class="permission-item">
-                            <input type="checkbox" id="perm-admin" value="ADMINISTRATOR" onchange="updatePermissions()">
+                            <input type="checkbox" id="perm-admin" value="ADMINISTRATOR" class="perm-checkbox">
                             <label for="perm-admin">Administrador (Acceso Total)</label>
                         </div>
                         <div class="permission-item">
-                            <input type="checkbox" id="perm-manage-guild" value="MANAGE_GUILD" onchange="updatePermissions()">
+                            <input type="checkbox" id="perm-manage-guild" value="MANAGE_GUILD" class="perm-checkbox">
                             <label for="perm-manage-guild">Gestionar Servidor</label>
                         </div>
                         <div class="permission-item">
-                            <input type="checkbox" id="perm-kick-members" value="KICK_MEMBERS" onchange="updatePermissions()">
+                            <input type="checkbox" id="perm-kick-members" value="KICK_MEMBERS" class="perm-checkbox">
                             <label for="perm-kick-members">Expulsar Miembros</label>
                         </div>
                         <div class="permission-item">
-                            <input type="checkbox" id="perm-ban-members" value="BAN_MEMBERS" onchange="updatePermissions()">
+                            <input type="checkbox" id="perm-ban-members" value="BAN_MEMBERS" class="perm-checkbox">
                             <label for="perm-ban-members">Banear Miembros</label>
                         </div>
                         <div class="permission-item">
-                            <input type="checkbox" id="perm-moderate-members" value="MODERATE_MEMBERS" onchange="updatePermissions()">
+                            <input type="checkbox" id="perm-moderate-members" value="MODERATE_MEMBERS" class="perm-checkbox">
                             <label for="perm-moderate-members">Moderar Miembros (Timeout)</label>
                         </div>
                     </div>
@@ -225,7 +225,7 @@
                 <input type="hidden" id="editRolePermissions">
 
                 <div class="modal-actions">
-                    <button type="button" class="modal-btn modal-btn-secondary" onclick="closeModal('editRoleModal')">
+                    <button type="button" class="modal-btn modal-btn-secondary btn-cancel-modal" data-modal-id="editRoleModal">
                         Cancelar
                     </button>
                     <button type="submit" class="modal-btn modal-btn-primary">
@@ -241,7 +241,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h2><i class="fas fa-trash"></i> Eliminar Rol</h2>
-                <button class="modal-close" onclick="closeModal('deleteRoleModal')">×</button>
+                <button class="modal-close" data-modal-id="deleteRoleModal">×</button>
             </div>
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle"></i> Esta acción es irreversible
@@ -254,10 +254,10 @@
             </p>
             <input type="hidden" id="deleteRoleId">
             <div class="modal-actions">
-                <button class="modal-btn modal-btn-secondary" onclick="closeModal('deleteRoleModal')">
+                <button type="button" class="modal-btn modal-btn-secondary btn-cancel-modal" data-modal-id="deleteRoleModal">
                     Cancelar
                 </button>
-                <button class="modal-btn modal-btn-danger" onclick="submitDeleteRole()">
+                <button type="button" class="modal-btn modal-btn-danger btn-submit-delete">
                     <i class="fas fa-trash"></i> Eliminar Rol
                 </button>
             </div>
@@ -274,8 +274,9 @@
         // Inicializar modales
         setupModalOverlays();
 
-        // Event listeners para botones de editar
+        // Event listeners para botones de editar/eliminar
         document.addEventListener('click', (e) => {
+            // Botones de editar
             if (e.target.closest('.btn-edit-role')) {
                 const btn = e.target.closest('.btn-edit-role');
                 const roleId = btn.dataset.roleId;
@@ -283,24 +284,55 @@
                 editRole(roleId, roleName);
             }
             
+            // Botones de eliminar
             if (e.target.closest('.btn-delete-role')) {
                 const btn = e.target.closest('.btn-delete-role');
                 const roleId = btn.dataset.roleId;
                 const roleName = btn.dataset.roleName;
                 deleteRole(roleId, roleName);
             }
+
+            // Botones de cerrar modal (X)
+            if (e.target.closest('.modal-close')) {
+                const btn = e.target.closest('.modal-close');
+                const modalId = btn.dataset.modalId;
+                closeModal(modalId);
+            }
+
+            // Botones de cancelar modal
+            if (e.target.closest('.btn-cancel-modal')) {
+                const btn = e.target.closest('.btn-cancel-modal');
+                const modalId = btn.dataset.modalId;
+                closeModal(modalId);
+            }
+
+            // Botón de eliminar rol (confirmación)
+            if (e.target.closest('.btn-submit-delete')) {
+                submitDeleteRole();
+            }
         });
+
+        // Event listeners para checkboxes de permisos
+        document.querySelectorAll('.perm-checkbox').forEach(cb => {
+            cb.addEventListener('change', updatePermissions);
+        });
+
+        // Event listener para el formulario de edición
+        document.getElementById('editRoleForm').addEventListener('submit', submitEditRole);
 
         // Editar rol
         function editRole(roleId, roleName) {
-            // Obtener datos del rol
-            const row = document.querySelector(`[data-role-id="${roleId}"]`);
+            // Obtener datos del rol desde la fila
+            const row = document.querySelector(`.btn-edit-role[data-role-id="${roleId}"]`).closest('.role-row');
+            const colorDot = row.querySelector('.role-color-dot');
+            const roleColor = colorDot ? colorDot.style.background : '#00d4ff';
             
             document.getElementById('editRoleId').value = roleId;
             document.getElementById('editRoleName').value = roleName;
+            document.getElementById('editRoleColor').value = roleColor;
             
-            // Cargar permisos actuales (esto es una simulación)
-            document.querySelectorAll('.permission-item input[type="checkbox"]').forEach(cb => {
+            // Resetear permisos
+            document.querySelectorAll('.perm-checkbox').forEach(cb => {
                 cb.checked = false;
             });
 
