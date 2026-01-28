@@ -277,17 +277,28 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     try {
                         const staffRoleIds = JSON.parse(guildSettings.staffRoles);
                         console.log(`[DEBUG] Parsed staffRoleIds:`, staffRoleIds);
+                        console.log(`[DEBUG] Total members in cache: ${guild.members.cache.size}`);
                         
                         const staffMembers = guild.members.cache.filter(m => {
-                            if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
-                            // Verificar si tiene al menos uno de los roles de staff configurados
-                            const isStaff = m.roles.cache.some(role => staffRoleIds.includes(role.id));
-                            if (isStaff) console.log(`[DEBUG] Staff found: ${m.user.username} (${m.id})`);
-                            return isStaff;
+                            // Log de debugging por cada miembro
+                            const isBot = m.user.bot;
+                            const hasPresence = !!m.presence;
+                            const isOnline = m.presence?.status !== 'offline';
+                            const hasStaffRole = m.roles.cache.some(role => staffRoleIds.includes(role.id));
+                            const memberRoles = m.roles.cache.map(r => r.id).join(', ');
+                            
+                            if (!isBot && hasPresence) {
+                                console.log(`[DEBUG] Member: ${m.user.username} - Presence: ${m.presence.status} - Roles: [${memberRoles}] - IsStaff: ${hasStaffRole}`);
+                            }
+                            
+                            if (m.user.bot) return false;
+                            if (!m.presence) return false;
+                            if (m.presence.status === 'offline') return false;
+                            return hasStaffRole;
                         });
                         
                         discordStats.staff = staffMembers.size;
-                        console.log(`[DEBUG] Total staff: ${discordStats.staff}`);
+                        console.log(`[DEBUG] Total staff online: ${discordStats.staff}`);
                     } catch (e) {
                         console.error(`[ERROR] Parsing staffRoles: ${e.message}`);
                         discordStats.staff = 0;
