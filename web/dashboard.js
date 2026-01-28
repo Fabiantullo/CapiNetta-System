@@ -266,11 +266,20 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     discordStats.voice = 0;
                 }
 
-                discordStats.staff = guild.members.cache.filter(m =>
-                    !m.user.bot &&
-                    m.presence?.status !== 'offline' &&
-                    (m.permissions.has(PermissionsBitField.Flags.ModerateMembers) || m.permissions.has(PermissionsBitField.Flags.Administrator))
-                ).size;
+                // Staff Online: usuarios con roles de staff que estén online
+                // Contar usuarios que tengan al menos un rol con permisos de moderación/administración
+                discordStats.staff = guild.members.cache.filter(m => {
+                    if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                    
+                    // Verificar si tiene algún rol con permisos de staff
+                    return m.roles.cache.some(role => 
+                        role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
+                        role.permissions.has(PermissionsBitField.Flags.Administrator) ||
+                        role.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
+                        role.permissions.has(PermissionsBitField.Flags.KickMembers) ||
+                        role.permissions.has(PermissionsBitField.Flags.BanMembers)
+                    );
+                }).size;
             }
         }
 
@@ -547,12 +556,18 @@ app.get('/overview', checkAuth, async (req, res) => {
                 // Ignorar errores
             }
 
-            const staffOnline = guild.members.cache.filter(m =>
-                !m.user.bot &&
-                m.presence?.status !== 'offline' &&
-                (m.permissions.has(PermissionsBitField.Flags.ModerateMembers) || 
-                 m.permissions.has(PermissionsBitField.Flags.Administrator))
-            ).size;
+            const staffOnline = guild.members.cache.filter(m => {
+                if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                
+                // Verificar si tiene algún rol con permisos de staff
+                return m.roles.cache.some(role => 
+                    role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
+                    role.permissions.has(PermissionsBitField.Flags.Administrator) ||
+                    role.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
+                    role.permissions.has(PermissionsBitField.Flags.KickMembers) ||
+                    role.permissions.has(PermissionsBitField.Flags.BanMembers)
+                );
+            }).size;
 
             totalStaffOnline += staffOnline;
 
