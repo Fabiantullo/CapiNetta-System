@@ -24,7 +24,7 @@
             </button>
             <div class="dropdown-menu" id="serverMenu">
                 <% adminGuilds.forEach(guild => { %>
-                    <a href="/dashboard?guild=<%= guild.id %>" class="dropdown-item <%= guild.id === selectedGuild.id ? 'active' : '' %>">
+                    <a href="?server=<%= guild.id %>" class="dropdown-item <%= guild.id === selectedGuild.id ? 'active' : '' %>">
                         <% if (guild.icon) { %>
                             <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" 
                                  class="dropdown-icon" alt="<%= guild.name %>">
