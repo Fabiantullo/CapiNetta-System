@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Capi Netta | Tickets</title>
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -15,7 +18,7 @@
     <nav class="sidebar">
         <div class="brand">CAPI NETTA RP</div>
         <ul class="nav-links">
-            <li><a href="/">📊 Dashboard</a></li>
+            <li><a href="/dashboard">📊 Dashboard</a></li>
             <li><a href="/tickets" class="active">🎫 Tickets</a></li>
             <li><a href="/logs">📜 Logs Totales</a></li>
         </ul>

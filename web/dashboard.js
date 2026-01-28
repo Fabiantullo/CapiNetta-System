@@ -20,10 +20,28 @@ const PORT = process.env.PORT || 3000;
 // Confianza en proxy para que secure cookies funcionen detrás de Nginx/Cloudflare
 app.set('trust proxy', 1);
 
-// Seguridad HTTP básica
+// Seguridad HTTP básica con CSP permisivo para CDNs
 app.use(helmet({
-    contentSecurityPolicy: false // desactivamos CSP por EJS sin nonce; se puede afinar luego
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "https://cdn.discordapp.com", "data:"],
+            connectSrc: ["'self'"]
+        }
+    }
 }));
+
+// Headers adicionales para evitar caché de archivos estáticos
+app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    next();
+});
 
 // Rate limiting suave para endpoints públicos
 app.use(rateLimit({
@@ -34,7 +52,10 @@ app.use(rateLimit({
 }));
 
 // Servir archivos estáticos desde la carpeta 'public'
-app.use(express.static('web/public'));
+app.use(express.static('web/public', {
+    maxAge: 0,
+    etag: false
+}));
 
 // =============================================================================
 //                             CONFIGURACIÓN PASSPORT

@@ -95,6 +95,8 @@ body {
     border-radius: 6px;
     transition: all 0.3s;
     border-left: 3px solid transparent;
+    cursor: pointer;
+    user-select: none;
 }
 
 .nav-links a:hover {
