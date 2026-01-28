@@ -83,7 +83,7 @@ passport.use(new Strategy({
 // =============================================================================
 
 app.set('view engine', 'ejs');
-app.set('views', './views');
+app.set('views', './web/views');
 
 app.use(session({
     name: 'capi-dashboard.sid',
