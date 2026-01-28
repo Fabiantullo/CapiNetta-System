@@ -64,8 +64,12 @@ passport.use(new Strategy({
     }
 
     // Chequeamos permiso de ADMINISTRATOR (0x00000008)
-    // El campo permissions viene como String numérico.
-    const permissions = new PermissionsBitField(targetGuild.permissions);
+    // El campo permissions viene como String numérico, necesita ser convertido a BigInt
+    let permissionValue = targetGuild.permissions;
+    if (typeof permissionValue === 'string') {
+        permissionValue = BigInt(permissionValue);
+    }
+    const permissions = new PermissionsBitField(permissionValue);
 
     if (!permissions.has(PermissionsBitField.Flags.Administrator)) {
         return done(null, false, { message: "No tienes permisos de Administrador." });
