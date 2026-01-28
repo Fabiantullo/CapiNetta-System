@@ -271,49 +271,34 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     where: { guildId }
                 });
 
-                console.log(`[DEBUG] Guild ${guildId} - staffRoles from DB:`, guildSettings?.staffRoles);
-
                 if (guildSettings?.staffRoles && guildSettings.staffRoles !== 'null') {
                     try {
                         const staffRoleIds = JSON.parse(guildSettings.staffRoles);
-                        console.log(`[DEBUG] Parsed staffRoleIds:`, staffRoleIds);
                         
                         // Obtener miembros con información de presence actualizada
                         let members = guild.members.cache;
-                        console.log(`[DEBUG] Total members in cache: ${members.size}`);
                         
                         // Si hay pocos miembros en caché, intentar fetcharlos
                         if (members.size < guild.memberCount) {
                             try {
                                 await guild.members.fetch({ force: true });
                                 members = guild.members.cache;
-                                console.log(`[DEBUG] After fetch - Total members: ${members.size}`);
                             } catch (e) {
-                                console.warn(`[WARN] Could not fetch members: ${e.message}`);
+                                // Silently handle fetch errors
                             }
                         }
                         
-                        const staffMembers = members.filter(m => {
-                            const isBot = m.user.bot;
+                        discordStats.staff = members.filter(m => {
+                            if (m.user.bot) return false;
                             const isOnline = m.presence?.status !== 'offline' && m.presence?.status !== undefined;
                             const hasStaffRole = m.roles.cache.some(role => staffRoleIds.includes(role.id));
-                            
-                            if (!isBot && hasStaffRole) {
-                                console.log(`[DEBUG] Staff member: ${m.user.username} | Presence: ${m.presence?.status || 'none'} | IsOnline: ${isOnline}`);
-                            }
-                            
-                            return !isBot && isOnline && hasStaffRole;
-                        });
-                        
-                        discordStats.staff = staffMembers.size;
-                        console.log(`[DEBUG] Total staff online: ${discordStats.staff}`);
+                            return isOnline && hasStaffRole;
+                        }).size;
                     } catch (e) {
-                        console.error(`[ERROR] Parsing staffRoles: ${e.message}`);
                         discordStats.staff = 0;
                     }
                 } else {
                     // Fallback: si no hay roles configurados, usar permisos
-                    console.log(`[DEBUG] Using fallback permissions for staff counting`);
                     discordStats.staff = guild.members.cache.filter(m => {
                         if (m.user.bot) return false;
                         if (m.presence?.status === 'offline' || m.presence?.status === undefined) return false;
@@ -391,6 +376,125 @@ app.get('/logs', checkAuth, async (req, res) => {
         selectedGuild: req.selectedGuild,
         adminGuilds: req.adminGuilds
     });
+});
+
+// Ruta para Sistema de Warns (PROTEGIDA)
+app.get('/warns', checkAuth, async (req, res) => {
+    try {
+        const guildId = req.selectedGuild.id;
+        const guild = app.locals.discordClient.guilds.cache.get(guildId);
+
+        // Obtener todos los warns del servidor
+        const warns = await prisma.warn.findMany({
+            where: { guildId }
+        });
+
+        // Estadísticas
+        const totalUsers = warns.length;
+        const totalWarns = warns.reduce((sum, w) => sum + w.count, 0);
+        const avgWarns = totalUsers > 0 ? totalWarns / totalUsers : 0;
+
+        // Warns recientes (últimas 24 horas)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentLogs = await prisma.warnLog.findMany({
+            where: {
+                timestamp: { gte: oneDayAgo }
+            },
+            orderBy: { timestamp: 'desc' }
+        });
+        const recentWarns = recentLogs.length;
+
+        // Enriquecer datos de warns con info de Discord
+        const enrichedWarns = await Promise.all(warns.map(async (warn) => {
+            try {
+                const member = await guild.members.fetch(warn.userId);
+                const lastLog = await prisma.warnLog.findFirst({
+                    where: { userId: warn.userId },
+                    orderBy: { timestamp: 'desc' }
+                });
+
+                return {
+                    userId: warn.userId,
+                    username: member.user.username,
+                    avatar: member.user.displayAvatarURL({ size: 64 }),
+                    count: warn.count,
+                    lastWarnDate: lastLog ? new Date(lastLog.timestamp).toLocaleDateString('es-AR') : null
+                };
+            } catch (e) {
+                return {
+                    userId: warn.userId,
+                    username: 'Usuario Desconocido',
+                    avatar: 'https://cdn.discordapp.com/embed/avatars/0.png',
+                    count: warn.count,
+                    lastWarnDate: null
+                };
+            }
+        }));
+
+        // Ordenar por cantidad de warns (mayor a menor)
+        enrichedWarns.sort((a, b) => b.count - a.count);
+
+        // Actividad reciente con nombres de usuarios
+        const recentActivity = await Promise.all(recentLogs.slice(0, 10).map(async (log) => {
+            try {
+                const user = await guild.members.fetch(log.userId);
+                const moderator = await guild.members.fetch(log.moderatorId);
+                
+                return {
+                    username: user.user.username,
+                    moderatorName: moderator.user.username,
+                    warnNumber: log.warnNumber,
+                    reason: log.reason,
+                    timestamp: new Date(log.timestamp).toLocaleString('es-AR')
+                };
+            } catch (e) {
+                return {
+                    username: 'Usuario Desconocido',
+                    moderatorName: 'Moderador Desconocido',
+                    warnNumber: log.warnNumber,
+                    reason: log.reason,
+                    timestamp: new Date(log.timestamp).toLocaleString('es-AR')
+                };
+            }
+        }));
+
+        res.render('warns', {
+            warns: enrichedWarns,
+            totalUsers,
+            totalWarns,
+            avgWarns,
+            recentWarns,
+            recentActivity,
+            user: req.user,
+            selectedGuild: req.selectedGuild,
+            adminGuilds: req.adminGuilds
+        });
+    } catch (error) {
+        console.error('Error loading warns:', error);
+        res.status(500).send('Error al cargar el sistema de warns');
+    }
+});
+
+// Endpoint para resetear warns
+app.post('/warns/reset/:userId', checkAuth, async (req, res) => {
+    try {
+        const guildId = req.selectedGuild.id;
+        const { userId } = req.params;
+
+        await prisma.warn.delete({
+            where: {
+                guildId_userId: {
+                    guildId,
+                    userId
+                }
+            }
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error resetting warns:', error);
+        res.json({ success: false, error: error.message });
+    }
 });
 
 // Ruta de Configuración del Servidor (PROTEGIDA)

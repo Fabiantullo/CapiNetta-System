@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Warns | <%= selectedGuild.name %></title>
+    <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <%- include('partials/sidebar') %>
+
+    <div class="main-content">
+        <%- include('partials/server-selector', { selectedGuild, adminGuilds }) %>
+
+        <div class="content-wrapper">
+            <div class="page-header">
+                <h1><i class="fas fa-exclamation-triangle"></i> Sistema de Warns</h1>
+                <p>Gestión y consulta de advertencias del servidor</p>
+            </div>
+
+            <!-- Estadísticas de Warns -->
+            <div class="stats-grid">
+                <div class="stat-card warn-card">
+                    <div class="stat-icon warn-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3><%= totalUsers %></h3>
+                        <p>Usuarios con Warns</p>
+                    </div>
+                </div>
+
+                <div class="stat-card warn-card">
+                    <div class="stat-icon danger-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3><%= totalWarns %></h3>
+                        <p>Total de Warns</p>
+                    </div>
+                </div>
+
+                <div class="stat-card warn-card">
+                    <div class="stat-icon info-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3><%= recentWarns %></h3>
+                        <p>Warns (últimas 24h)</p>
+                    </div>
+                </div>
+
+                <div class="stat-card warn-card">
+                    <div class="stat-icon success-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3><%= avgWarns.toFixed(1) %></h3>
+                        <p>Promedio por Usuario</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchUser" placeholder="Buscar por nombre de usuario o ID...">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn-filter active" data-filter="all">
+                        <i class="fas fa-list"></i> Todos
+                    </button>
+                    <button class="btn-filter" data-filter="high">
+                        <i class="fas fa-exclamation-triangle"></i> Alto Riesgo (3+)
+                    </button>
+                    <button class="btn-filter" data-filter="medium">
+                        <i class="fas fa-exclamation"></i> Riesgo Medio (1-2)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de Usuarios con Warns -->
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>ID</th>
+                            <th>Warns</th>
+                            <th>Estado</th>
+                            <th>Último Warn</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="warnsTable">
+                        <% if (warns.length === 0) { %>
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <i class="fas fa-check-circle"></i>
+                                    <p>¡No hay usuarios con warns en este servidor!</p>
+                                </td>
+                            </tr>
+                        <% } else { %>
+                            <% warns.forEach(warn => { %>
+                                <tr class="warn-row" data-warns="<%= warn.count %>" data-user="<%= warn.username.toLowerCase() %> <%= warn.userId %>">
+                                    <td>
+                                        <div class="user-info">
+                                            <img src="<%= warn.avatar %>" alt="Avatar" class="user-avatar">
+                                            <span class="user-name"><%= warn.username %></span>
+                                        </div>
+                                    </td>
+                                    <td><code><%= warn.userId %></code></td>
+                                    <td>
+                                        <span class="warn-badge <%= warn.count >= 3 ? 'warn-high' : warn.count >= 1 ? 'warn-medium' : 'warn-low' %>">
+                                            <%= warn.count %> warn<%= warn.count !== 1 ? 's' : '' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <% if (warn.count >= 3) { %>
+                                            <span class="status-badge danger">Alto Riesgo</span>
+                                        <% } else if (warn.count >= 1) { %>
+                                            <span class="status-badge warning">Moderado</span>
+                                        <% } else { %>
+                                            <span class="status-badge success">Normal</span>
+                                        <% } %>
+                                    </td>
+                                    <td><%= warn.lastWarnDate || 'N/A' %></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-action btn-info" onclick="viewHistory('<%= warn.userId %>', '<%= warn.username %>')">
+                                                <i class="fas fa-history"></i> Historial
+                                            </button>
+                                            <button class="btn-action btn-danger" onclick="resetWarns('<%= warn.userId %>', '<%= warn.username %>')">
+                                                <i class="fas fa-trash"></i> Resetear
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Actividad Reciente -->
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> Actividad Reciente de Warns</h2>
+            </div>
+            <div class="activity-feed">
+                <% if (recentActivity.length === 0) { %>
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No hay actividad reciente de warns</p>
+                    </div>
+                <% } else { %>
+                    <% recentActivity.forEach(log => { %>
+                        <div class="activity-item">
+                            <div class="activity-icon warn-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="activity-details">
+                                <p class="activity-title">
+                                    <strong><%= log.username %></strong> recibió su warn #<%= log.warnNumber %>
+                                </p>
+                                <p class="activity-subtitle">
+                                    Moderador: <strong><%= log.moderatorName %></strong> • 
+                                    Razón: <%= log.reason || 'No especificada' %>
+                                </p>
+                                <span class="activity-time"><%= log.timestamp %></span>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de filtrado
+        const searchInput = document.getElementById('searchUser');
+        const filterButtons = document.querySelectorAll('.btn-filter');
+        const tableRows = document.querySelectorAll('.warn-row');
+
+        let currentFilter = 'all';
+
+        // Búsqueda en tiempo real
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            filterRows(searchTerm, currentFilter);
+        });
+
+        // Filtros por categoría
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                filterRows(searchInput.value.toLowerCase(), currentFilter);
+            });
+        });
+
+        function filterRows(searchTerm, filter) {
+            tableRows.forEach(row => {
+                const userData = row.dataset.user;
+                const warnCount = parseInt(row.dataset.warns);
+                
+                const matchesSearch = userData.includes(searchTerm);
+                const matchesFilter = 
+                    filter === 'all' ||
+                    (filter === 'high' && warnCount >= 3) ||
+                    (filter === 'medium' && warnCount >= 1 && warnCount < 3);
+
+                row.style.display = matchesSearch && matchesFilter ? '' : 'none';
+            });
+        }
+
+        // Ver historial de warns
+        function viewHistory(userId, username) {
+            alert(`Función de historial de ${username} (${userId}) - Por implementar con modal`);
+        }
+
+        // Resetear warns
+        function resetWarns(userId, username) {
+            if (confirm(`¿Estás seguro de resetear todos los warns de ${username}?`)) {
+                fetch(`/warns/reset/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Warns reseteados correctamente');
+                        location.reload();
+                    } else {
+                        alert('Error al resetear warns');
+                    }
+                })
+                .catch(err => alert('Error de conexión'));
+            }
+        }
+    </script>
+
+    <%- include('partials/sidebar-script') %>
+</body>
+</html>

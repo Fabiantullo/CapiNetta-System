@@ -36,8 +36,15 @@ module.exports = {
                 .addFields(
                     { name: '📡 Canales de Sistema', value: `> **Logs:** ${s?.logsChannel ? `<#${s.logsChannel}>` : '❌'}\n> **Debug:** ${s?.debugChannel ? `<#${s.debugChannel}>` : '❌'}\n> **Verificación:** ${s?.verifyChannel ? `<#${s.verifyChannel}>` : '❌'}`, inline: true },
                     { name: '🎭 Gestión de Roles', value: `> **Usuario:** ${s?.roleUser ? `<@&${s.roleUser}>` : '❌'}\n> **Sin Verificar:** ${s?.roleNoVerify ? `<@&${s.roleNoVerify}>` : '❌'}\n> **Muteado:** ${s?.roleMuted ? `<@&${s.roleMuted}>` : '❌'}`, inline: true },
-                    { name: '� Roles de Staff', value: (() => { try { const roles = s?.staffRoles ? JSON.parse(s.staffRoles) : []; return roles.length > 0 ? roles.map(r => `<@&${r}>`).join(' ') : '🔘 *Usando permisos*'; } catch { return '❌'; } })(), inline: false },
-                    { name: '�🚀 Módulos Especializados', value: `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *OFF*'}\n**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *OFF*'}`, inline: false }
+                    { name: '👮 Roles de Staff', value: (() => { 
+                        try { 
+                            const roles = s?.staffRoles ? JSON.parse(s.staffRoles) : []; 
+                            return roles.length > 0 ? roles.map(r => `<@&${r}>`).join(', ') : '🔘 *Usando permisos por defecto*'; 
+                        } catch { 
+                            return '❌ Error al cargar'; 
+                        } 
+                    })(), inline: false },
+                    { name: '🚀 Módulos Especializados', value: `**Welcome Canvas:** ${s?.welcomeChannel ? `<#${s.welcomeChannel}> (✅)` : '🔘 *OFF*'}\n**Soporte/Aislados:** ${s?.supportChannel ? `<#${s.supportChannel}> (✅)` : '🔘 *OFF*'}`, inline: false }
                 )
                 .setFooter({ text: "Capi Netta System • Gestión de Alta Eficiencia" });
 

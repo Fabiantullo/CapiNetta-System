@@ -125,8 +125,18 @@ module.exports = {
             }
 
             // Navegación
-            if (i.customId === 'next') step++;
-            if (i.customId === 'skip_staff') step++;
+            if (i.customId === 'next') {
+                step++;
+                await i.deferUpdate();
+                await interaction.editReply({ embeds: [getEmbed()], components: getComponents() });
+                return;
+            }
+            if (i.customId === 'skip_staff') {
+                step++;
+                await i.deferUpdate();
+                await interaction.editReply({ embeds: [getEmbed()], components: getComponents() });
+                return;
+            }
             if (i.customId === 'finish') {
                 try {
                     // Convertir staffRoles a JSON antes de guardar
@@ -144,7 +154,7 @@ module.exports = {
                 }
             }
 
-            // Re-render
+            // Re-render para selecciones
             await i.update({ embeds: [getEmbed()], components: getComponents() });
         });
     }
