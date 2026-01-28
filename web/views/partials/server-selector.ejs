@@ -1,51 +1,39 @@
-<!-- Server Selector Header -->
-<div class="server-selector-header">
+<!-- Server Selector -->
+<div class="server-selector-container">
     <div class="current-server">
         <% if (selectedGuild.icon) { %>
             <img src="https://cdn.discordapp.com/icons/<%= selectedGuild.id %>/<%= selectedGuild.icon %>.png" 
-                 class="current-server-icon" alt="<%= selectedGuild.name %>">
+                 class="server-icon" alt="<%= selectedGuild.name %>">
         <% } else { %>
-            <div class="current-server-icon-placeholder">
+            <div class="server-icon-placeholder">
                 <%= selectedGuild.name.charAt(0).toUpperCase() %>
             </div>
         <% } %>
-        <div class="current-server-info">
-            <span class="current-server-label">Servidor Actual</span>
-            <span class="current-server-name"><%= selectedGuild.name %></span>
+        <div class="server-details">
+            <span class="server-name"><%= selectedGuild.name %></span>
+            <span class="server-id"><%= selectedGuild.id %></span>
         </div>
     </div>
-    <div class="server-actions-header">
-        <a href="/servidores" class="btn-view-all" title="Ver todos los servidores">
-            🌐 Todos
-        </a>
-        <div class="server-dropdown">
-            <button class="dropdown-toggle" id="serverDropdown">
-                Cambiar ▼
-            </button>
-            <div class="dropdown-menu" id="serverMenu">
-                <a href="/overview" class="dropdown-item dropdown-overview">
-                    <div class="dropdown-icon-placeholder">📊</div>
-                    <span><strong>Análisis General</strong></span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <% adminGuilds.forEach(guild => { %>
-                    <a href="?server=<%= guild.id %>" class="dropdown-item <%= guild.id === selectedGuild.id ? 'active' : '' %>">
-                        <% if (guild.icon) { %>
-                            <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" 
-                                 class="dropdown-icon" alt="<%= guild.name %>">
-                        <% } else { %>
-                            <div class="dropdown-icon-placeholder">
-                                <%= guild.name.charAt(0).toUpperCase() %>
-                            </div>
-                        <% } %>
-                        <span><%= guild.name %></span>
-                        <% if (guild.id === selectedGuild.id) { %>
-                            <span class="check-icon">✓</span>
-                        <% } %>
-                    </a>
-                <% }); %>
-            </div>
-        </div>
+    <button class="server-selector-btn" id="serverSelectorBtn">
+        <i class="fas fa-chevron-down"></i>
+    </button>
+    <div class="server-dropdown" id="serverDropdown">
+        <% adminGuilds.forEach(guild => { %>
+            <a href="/dashboard?guild=<%= guild.id %>" class="server-option <%= guild.id === selectedGuild.id ? 'active' : '' %>">
+                <% if (guild.icon) { %>
+                    <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" 
+                         class="server-icon" alt="<%= guild.name %>">
+                <% } else { %>
+                    <div class="server-icon-placeholder">
+                        <%= guild.name.charAt(0).toUpperCase() %>
+                    </div>
+                <% } %>
+                <div class="server-info">
+                    <span class="server-name"><%= guild.name %></span>
+                    <span class="server-id"><%= guild.id %></span>
+                </div>
+            </a>
+        <% }); %>
     </div>
 </div>
 
