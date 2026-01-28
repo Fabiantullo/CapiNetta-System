@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Capi Netta | Configuración</title>
+    <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Hamburger Menu Button -->
+    <button class="hamburger" id="hamburger" title="Menú">☰</button>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="brand">CAPI NETTA RP</div>
+        <ul class="nav-links">
+            <li><a href="/dashboard">📊 Dashboard</a></li>
+            <li><a href="/tickets">🎫 Tickets</a></li>
+            <li><a href="/logs">📜 Logs Totales</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="/configuracion" class="active">⚙️ Configuración</a></li>
+            <li><a href="/sistema-warns">⚠️ Sistema de Warns</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">👑 Gestión de Roles</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">📢 Canales</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">📈 Estadísticas</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">ℹ️ Acerca de</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">❓ Ayuda</a></li>
+        </ul>
+
+        <div class="user-info">
+            <% if (user.avatar) { %>
+                <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="user-avatar"
+                    alt="Avatar">
+            <% } else { %>
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" class="user-avatar" alt="Avatar">
+            <% } %>
+            <div class="user-details">
+                <div class="username"><%= user.username %></div>
+                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="header-section">
+            <h1>⚙️ Configuración del Servidor</h1>
+            <p class="subtitle">Configura los canales y roles esenciales del bot Capi Netta</p>
+        </div>
+
+        <% if (success) { %>
+            <div class="alert alert-success">
+                ✅ Configuración guardada exitosamente
+            </div>
+        <% } %>
+
+        <% if (error) { %>
+            <div class="alert alert-error">
+                ❌ Error: <%= error %>
+            </div>
+        <% } %>
+
+        <form method="POST" action="/configuracion/save" class="config-form">
+            
+            <!-- Sección Canales -->
+            <div class="config-section">
+                <h2>📍 Canales del Servidor</h2>
+                <p class="section-description">Configura los canales donde el bot enviará mensajes importantes</p>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="logsChannel">📜 Canal de Logs</label>
+                        <select name="logsChannel" id="logsChannel">
+                            <option value="">-- Sin configurar --</option>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.id %>" <%= settings.logsChannel === ch.id ? 'selected' : '' %>>
+                                    #<%= ch.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Logs de moderación, mensajes eliminados, etc.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="debugChannel">🚨 Canal de Debug</label>
+                        <select name="debugChannel" id="debugChannel">
+                            <option value="">-- Sin configurar --</option>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.id %>" <%= settings.debugChannel === ch.id ? 'selected' : '' %>>
+                                    #<%= ch.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Errores técnicos y mensajes del sistema</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="verifyChannel">✅ Canal de Verificación</label>
+                        <select name="verifyChannel" id="verifyChannel">
+                            <option value="">-- Sin configurar --</option>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.id %>" <%= settings.verifyChannel === ch.id ? 'selected' : '' %>>
+                                    #<%= ch.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Canal donde los usuarios se verifican</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="welcomeChannel">👋 Canal de Bienvenida</label>
+                        <select name="welcomeChannel" id="welcomeChannel">
+                            <option value="">-- Sin configurar --</option>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.id %>" <%= settings.welcomeChannel === ch.id ? 'selected' : '' %>>
+                                    #<%= ch.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Mensajes de bienvenida a nuevos miembros</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="supportChannel">🆘 Canal de Soporte</label>
+                        <select name="supportChannel" id="supportChannel">
+                            <option value="">-- Sin configurar --</option>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.id %>" <%= settings.supportChannel === ch.id ? 'selected' : '' %>>
+                                    #<%= ch.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Soporte/reportes de estafa</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ticketLogsChannel">🎫 Logs de Tickets</label>
+                        <select name="ticketLogsChannel" id="ticketLogsChannel">
+                            <option value="">-- Sin configurar --</option>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.id %>" <%= settings.ticketLogsChannel === ch.id ? 'selected' : '' %>>
+                                    #<%= ch.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Transcripts y logs de tickets cerrados</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección Roles -->
+            <div class="config-section">
+                <h2>👑 Roles del Servidor</h2>
+                <p class="section-description">Configura los roles automáticos del sistema</p>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="roleUser">👤 Rol de Usuario Verificado</label>
+                        <select name="roleUser" id="roleUser">
+                            <option value="">-- Sin configurar --</option>
+                            <% roles.forEach(role => { %>
+                                <option value="<%= role.id %>" <%= settings.roleUser === role.id ? 'selected' : '' %>>
+                                    @<%= role.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Se otorga al verificarse</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roleNoVerify">❓ Rol Sin Verificar</label>
+                        <select name="roleNoVerify" id="roleNoVerify">
+                            <option value="">-- Sin configurar --</option>
+                            <% roles.forEach(role => { %>
+                                <option value="<%= role.id %>" <%= settings.roleNoVerify === role.id ? 'selected' : '' %>>
+                                    @<%= role.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Rol temporal para usuarios nuevos</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roleMuted">🔇 Rol de Muteado</label>
+                        <select name="roleMuted" id="roleMuted">
+                            <option value="">-- Sin configurar --</option>
+                            <% roles.forEach(role => { %>
+                                <option value="<%= role.id %>" <%= settings.roleMuted === role.id ? 'selected' : '' %>>
+                                    @<%= role.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <small>Rol para usuarios silenciados</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado y Botones -->
+            <div class="config-status">
+                <div class="status-badge <%= settings.isSetup ? 'status-ok' : 'status-warn' %>">
+                    <%= settings.isSetup ? '✅ Configuración Completa' : '⚠️ Configuración Incompleta' %>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">💾 Guardar Configuración</button>
+                <a href="/dashboard" class="btn btn-secondary">❌ Cancelar</a>
+            </div>
+        </form>
+
+    </main>
+
+</body>
+
+<script>
+    // Toggle sidebar
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+        });
+
+        const links = sidebar.querySelectorAll('a');
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // Auto-hide alerts
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 300);
+        });
+    }, 5000);
+</script>
+
+</html>

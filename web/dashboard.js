@@ -269,6 +269,108 @@ app.get('/logs', checkAuth, async (req, res) => {
     res.render('logs', { logs, user: req.user });
 });
 
+// Ruta de Configuración del Servidor (PROTEGIDA)
+app.get('/configuracion', checkAuth, async (req, res) => {
+    try {
+        const guildSettings = await prisma.guildSettings.findUnique({
+            where: { guildId: config.general.guildId }
+        });
+
+        // Si no existe configuración, crear una vacía
+        const settings = guildSettings || {
+            guildId: config.general.guildId,
+            logsChannel: null,
+            debugChannel: null,
+            verifyChannel: null,
+            welcomeChannel: null,
+            supportChannel: null,
+            roleUser: null,
+            roleNoVerify: null,
+            roleMuted: null,
+            ticketLogsChannel: null,
+            ticketPanelChannel: null,
+            ticketPanelMessage: null,
+            isSetup: false
+        };
+
+        // Obtener canales y roles del servidor para los selectores
+        const guild = app.locals.discordClient.guilds.cache.get(config.general.guildId);
+        const channels = guild ? guild.channels.cache
+            .filter(c => c.type === 0) // Solo canales de texto
+            .map(c => ({ id: c.id, name: c.name }))
+            .sort((a, b) => a.name.localeCompare(b.name)) : [];
+        
+        const roles = guild ? guild.roles.cache
+            .filter(r => !r.managed && r.name !== '@everyone')
+            .map(r => ({ id: r.id, name: r.name }))
+            .sort((a, b) => a.name.localeCompare(b.name)) : [];
+
+        res.render('configuracion', { 
+            user: req.user, 
+            settings,
+            channels,
+            roles,
+            success: req.query.success,
+            error: req.query.error
+        });
+    } catch (error) {
+        res.status(500).send("Error cargando configuración: " + error.message);
+    }
+});
+
+// Ruta POST para guardar configuración
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.post('/configuracion/save', checkAuth, async (req, res) => {
+    try {
+        const {
+            logsChannel,
+            debugChannel,
+            verifyChannel,
+            welcomeChannel,
+            supportChannel,
+            roleUser,
+            roleNoVerify,
+            roleMuted,
+            ticketLogsChannel
+        } = req.body;
+
+        await prisma.guildSettings.upsert({
+            where: { guildId: config.general.guildId },
+            update: {
+                logsChannel: logsChannel || null,
+                debugChannel: debugChannel || null,
+                verifyChannel: verifyChannel || null,
+                welcomeChannel: welcomeChannel || null,
+                supportChannel: supportChannel || null,
+                roleUser: roleUser || null,
+                roleNoVerify: roleNoVerify || null,
+                roleMuted: roleMuted || null,
+                ticketLogsChannel: ticketLogsChannel || null,
+                isSetup: true
+            },
+            create: {
+                guildId: config.general.guildId,
+                logsChannel: logsChannel || null,
+                debugChannel: debugChannel || null,
+                verifyChannel: verifyChannel || null,
+                welcomeChannel: welcomeChannel || null,
+                supportChannel: supportChannel || null,
+                roleUser: roleUser || null,
+                roleNoVerify: roleNoVerify || null,
+                roleMuted: roleMuted || null,
+                ticketLogsChannel: ticketLogsChannel || null,
+                isSetup: true
+            }
+        });
+
+        res.redirect('/configuracion?success=1');
+    } catch (error) {
+        res.redirect('/configuracion?error=' + encodeURIComponent(error.message));
+    }
+});
+
 // Función para iniciar el servidor
 function startDashboard(discordClient) {
     // Guardamos el cliente en locals para acceder en rutas
