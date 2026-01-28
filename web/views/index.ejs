@@ -13,12 +13,22 @@
 <body>
 
     <!-- Sidebar -->
-    <nav class="sidebar">
+    <nav class="sidebar" id="sidebar">
+        <button class="hamburger" id="hamburger" title="Menú">☰</button>
         <div class="brand">CAPI NETTA RP</div>
         <ul class="nav-links">
             <li><a href="/dashboard" class="active">📊 Dashboard</a></li>
             <li><a href="/tickets">🎫 Tickets</a></li>
             <li><a href="/logs">📜 Logs Totales</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="#config">⚙️ Configuración</a></li>
+            <li><a href="#warns">⚠️ Sistema de Warns</a></li>
+            <li><a href="#roles">👑 Gestión de Roles</a></li>
+            <li><a href="#channels">📢 Canales</a></li>
+            <li><a href="#stats">📈 Estadísticas</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="#about">ℹ️ Acerca de</a></li>
+            <li><a href="#help">❓ Ayuda</a></li>
         </ul>
 
         <div class="user-info">
@@ -159,5 +169,47 @@
     </main>
 
 </body>
+
+<script>
+    // Toggle sidebar en móvil
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+        });
+
+        // Cerrar sidebar al hacer click en un link
+        const links = sidebar.querySelectorAll('a');
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            });
+        });
+
+        // Cerrar sidebar al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // Marcar link activo
+    const currentLocation = location.pathname;
+    const links = document.querySelectorAll('.nav-links a');
+    links.forEach(link => {
+        if (link.getAttribute('href') === currentLocation) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+</script>
 
 </html>
