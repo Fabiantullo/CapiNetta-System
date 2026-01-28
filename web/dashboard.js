@@ -266,20 +266,32 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     discordStats.voice = 0;
                 }
 
-                // Staff Online: usuarios con roles de staff que estén online
-                // Contar usuarios que tengan al menos un rol con permisos de moderación/administración
-                discordStats.staff = guild.members.cache.filter(m => {
-                    if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
-                    
-                    // Verificar si tiene algún rol con permisos de staff
-                    return m.roles.cache.some(role => 
-                        role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
-                        role.permissions.has(PermissionsBitField.Flags.Administrator) ||
-                        role.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
-                        role.permissions.has(PermissionsBitField.Flags.KickMembers) ||
-                        role.permissions.has(PermissionsBitField.Flags.BanMembers)
-                    );
-                }).size;
+                // Staff Online: contar basándose en roles configurados
+                const guildSettings = await prisma.guildSettings.findUnique({
+                    where: { guildId }
+                });
+
+                if (guildSettings?.staffRoles) {
+                    try {
+                        const staffRoleIds = JSON.parse(guildSettings.staffRoles);
+                        discordStats.staff = guild.members.cache.filter(m => {
+                            if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                            // Verificar si tiene al menos uno de los roles de staff configurados
+                            return m.roles.cache.some(role => staffRoleIds.includes(role.id));
+                        }).size;
+                    } catch (e) {
+                        discordStats.staff = 0;
+                    }
+                } else {
+                    // Fallback: si no hay roles configurados, usar permisos
+                    discordStats.staff = guild.members.cache.filter(m => {
+                        if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                        return m.roles.cache.some(role => 
+                            role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
+                            role.permissions.has(PermissionsBitField.Flags.Administrator)
+                        );
+                    }).size;
+                }
             }
         }
 
@@ -418,8 +430,16 @@ app.post('/configuracion/save', checkAuth, async (req, res) => {
             roleUser,
             roleNoVerify,
             roleMuted,
-            ticketLogsChannel
+            ticketLogsChannel,
+            staffRoles
         } = req.body;
+
+        // Procesar staffRoles (puede venir como array o string único)
+        let staffRolesJson = null;
+        if (staffRoles) {
+            const rolesArray = Array.isArray(staffRoles) ? staffRoles : [staffRoles];
+            staffRolesJson = JSON.stringify(rolesArray);
+        }
 
         await prisma.guildSettings.upsert({
             where: { guildId },
@@ -433,6 +453,7 @@ app.post('/configuracion/save', checkAuth, async (req, res) => {
                 roleNoVerify: roleNoVerify || null,
                 roleMuted: roleMuted || null,
                 ticketLogsChannel: ticketLogsChannel || null,
+                staffRoles: staffRolesJson,
                 isSetup: true
             },
             create: {
@@ -446,6 +467,7 @@ app.post('/configuracion/save', checkAuth, async (req, res) => {
                 roleNoVerify: roleNoVerify || null,
                 roleMuted: roleMuted || null,
                 ticketLogsChannel: ticketLogsChannel || null,
+                staffRoles: staffRolesJson,
                 isSetup: true
             }
         });
@@ -556,18 +578,32 @@ app.get('/overview', checkAuth, async (req, res) => {
                 // Ignorar errores
             }
 
-            const staffOnline = guild.members.cache.filter(m => {
-                if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
-                
-                // Verificar si tiene algún rol con permisos de staff
-                return m.roles.cache.some(role => 
-                    role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
-                    role.permissions.has(PermissionsBitField.Flags.Administrator) ||
-                    role.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
-                    role.permissions.has(PermissionsBitField.Flags.KickMembers) ||
-                    role.permissions.has(PermissionsBitField.Flags.BanMembers)
-                );
-            }).size;
+            // Obtener configuración de roles de staff
+            const guildSettings = await prisma.guildSettings.findUnique({
+                where: { guildId: guild.id }
+            });
+
+            let staffOnline = 0;
+            if (guildSettings?.staffRoles) {
+                try {
+                    const staffRoleIds = JSON.parse(guildSettings.staffRoles);
+                    staffOnline = guild.members.cache.filter(m => {
+                        if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                        return m.roles.cache.some(role => staffRoleIds.includes(role.id));
+                    }).size;
+                } catch (e) {
+                    staffOnline = 0;
+                }
+            } else {
+                // Fallback: usar permisos
+                staffOnline = guild.members.cache.filter(m => {
+                    if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                    return m.roles.cache.some(role => 
+                        role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
+                        role.permissions.has(PermissionsBitField.Flags.Administrator)
+                    );
+                }).size;
+            }
 
             totalStaffOnline += staffOnline;
 

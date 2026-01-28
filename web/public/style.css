@@ -538,6 +538,47 @@ tr:hover {
     transition: all 0.3s;
 }
 
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.checkbox-item:hover {
+    background: rgba(88, 101, 242, 0.1);
+    border-color: var(--accent-color);
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.checkbox-label {
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.form-group-full {
+    grid-column: 1 / -1;
+}
+
 .form-group select:hover,
 .form-group select:focus,
 .form-group input:hover,

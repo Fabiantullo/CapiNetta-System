@@ -18,6 +18,7 @@ model GuildSettings {
   roleUser          String?
   roleNoVerify      String?
   roleMuted         String?
+  staffRoles        String? // JSON array de IDs de roles de staff
   ticketLogsChannel String?
   ticketPanelChannel String? // Canal donde está el panel (ID)
   ticketPanelMessage String? // Mensaje del panel (ID)

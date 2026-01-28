@@ -208,6 +208,29 @@
                 </div>
             </div>
 
+            <!-- Sección Roles de Staff -->
+            <div class="config-section">
+                <h2>👮 Roles de Staff</h2>
+                <p class="section-description">Selecciona los roles que se considerarán como Staff para estadísticas y conteos</p>
+
+                <div class="form-group-full">
+                    <label>Selecciona los roles de Staff (puedes elegir múltiples)</label>
+                    <div class="checkbox-group">
+                        <% 
+                        const staffRolesArray = settings.staffRoles ? JSON.parse(settings.staffRoles) : [];
+                        roles.forEach(role => { 
+                        %>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="staffRoles" value="<%= role.id %>" 
+                                    <%= staffRolesArray.includes(role.id) ? 'checked' : '' %>>
+                                <span class="checkbox-label">@<%= role.name %></span>
+                            </label>
+                        <% }); %>
+                    </div>
+                    <small>Estos roles se usarán para contar Staff Online en el dashboard</small>
+                </div>
+            </div>
+
             <!-- Estado y Botones -->
             <div class="config-status">
                 <div class="status-badge <%= settings.isSetup ? 'status-ok' : 'status-warn' %>">
