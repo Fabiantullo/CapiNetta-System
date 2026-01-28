@@ -266,7 +266,7 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     discordStats.voice = 0;
                 }
 
-                // Staff Online: contar basándose en roles configurados
+                // Staff Online: contar basándose en roles configurados y presence (online status)
                 const guildSettings = await prisma.guildSettings.findUnique({
                     where: { guildId }
                 });
@@ -295,17 +295,14 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                         
                         const staffMembers = members.filter(m => {
                             const isBot = m.user.bot;
-                            const hasPresence = !!m.presence;
-                            const isOnline = m.presence?.status && m.presence.status !== 'offline';
+                            const isOnline = m.presence?.status !== 'offline' && m.presence?.status !== undefined;
                             const hasStaffRole = m.roles.cache.some(role => staffRoleIds.includes(role.id));
                             
-                            // Log detallado
-                            if (!isBot) {
-                                console.log(`[DEBUG] Member: ${m.user.username} | Bot: ${isBot} | HasPresence: ${hasPresence} | Online: ${isOnline} | Roles: ${m.roles.cache.map(r => r.id).join(',')} | IsStaff: ${hasStaffRole}`);
+                            if (!isBot && hasStaffRole) {
+                                console.log(`[DEBUG] Staff member: ${m.user.username} | Presence: ${m.presence?.status || 'none'} | IsOnline: ${isOnline}`);
                             }
                             
-                            // Contar si: no es bot, tiene presence, está online, y tiene rol de staff
-                            return !isBot && hasPresence && isOnline && hasStaffRole;
+                            return !isBot && isOnline && hasStaffRole;
                         });
                         
                         discordStats.staff = staffMembers.size;
@@ -318,7 +315,8 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     // Fallback: si no hay roles configurados, usar permisos
                     console.log(`[DEBUG] Using fallback permissions for staff counting`);
                     discordStats.staff = guild.members.cache.filter(m => {
-                        if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
+                        if (m.user.bot) return false;
+                        if (m.presence?.status === 'offline' || m.presence?.status === undefined) return false;
                         return m.roles.cache.some(role => 
                             role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
                             role.permissions.has(PermissionsBitField.Flags.Administrator)
@@ -621,17 +619,19 @@ app.get('/overview', checkAuth, async (req, res) => {
                 try {
                     const staffRoleIds = JSON.parse(guildSettings.staffRoles);
                     staffOnline = guild.members.cache.filter(m => {
-                        if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
-                        return m.roles.cache.some(role => staffRoleIds.includes(role.id));
+                        if (m.user.bot) return false;
+                        const isOnline = m.presence?.status !== 'offline' && m.presence?.status !== undefined;
+                        return isOnline && m.roles.cache.some(role => staffRoleIds.includes(role.id));
                     }).size;
                 } catch (e) {
                     staffOnline = 0;
                 }
             } else {
-                // Fallback: usar permisos
+                // Fallback: usar presence + permisos
                 staffOnline = guild.members.cache.filter(m => {
-                    if (m.user.bot || !m.presence || m.presence.status === 'offline') return false;
-                    return m.roles.cache.some(role => 
+                    if (m.user.bot) return false;
+                    const isOnline = m.presence?.status !== 'offline' && m.presence?.status !== undefined;
+                    return isOnline && m.roles.cache.some(role => 
                         role.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
                         role.permissions.has(PermissionsBitField.Flags.Administrator)
                     );
