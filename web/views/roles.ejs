@@ -70,18 +70,24 @@
 
             <!-- Filtros -->
             <div class="filters-section">
-                <div class="filters-wrapper">
-                    <input type="text" id="searchRole" class="search-input" placeholder="🔍 Buscar roles...">
+                <div class="search-filter-container">
+                    <div class="search-box-large">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchRole" placeholder="Buscar roles por nombre...">
+                    </div>
                     
-                    <div>
-                        <button class="btn-filter-roles active" data-filter="all">
-                            <i class="fas fa-list"></i> Todos
+                    <div class="filter-buttons-large">
+                        <button class="btn-filter-large active" data-filter="all">
+                            <i class="fas fa-list"></i>
+                            <span>Todos</span>
                         </button>
-                        <button class="btn-filter-roles" data-filter="staff">
-                            <i class="fas fa-shield-alt"></i> Staff
+                        <button class="btn-filter-large" data-filter="staff">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Staff</span>
                         </button>
-                        <button class="btn-filter-roles" data-filter="custom">
-                            <i class="fas fa-pencil-alt"></i> Personalizados
+                        <button class="btn-filter-large" data-filter="custom">
+                            <i class="fas fa-pencil-alt"></i>
+                            <span>Personalizados</span>
                         </button>
                     </div>
                 </div>
@@ -148,11 +154,11 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn-action" onclick="editRole('<%= role.id %>', '<%= role.name %>')">
+                                            <button class="btn-action btn-edit-role" data-role-id="<%= role.id %>" data-role-name="<%= role.name %>">
                                                 <i class="fas fa-edit"></i> Editar
                                             </button>
                                             <% if (role.type === 'custom') { %>
-                                                <button class="btn-action btn-action-danger" onclick="deleteRole('<%= role.id %>', '<%= role.name %>')">
+                                                <button class="btn-action btn-action-danger btn-delete-role" data-role-id="<%= role.id %>" data-role-name="<%= role.name %>">
                                                     <i class="fas fa-trash"></i> Eliminar
                                                 </button>
                                             <% } %>
@@ -163,29 +169,6 @@
                         <% } %>
                     </tbody>
                 </table>
-            </div>
-
-            <!-- Información de Permisos Clave -->
-            <div class="info-section">
-                <h2><i class="fas fa-book"></i> Permisos Clave</h2>
-            </div>
-            <div class="info-cards">
-                <div class="info-card" style="border-left-color: #e74c3c;">
-                    <h3><i class="fas fa-crown"></i> Administrador</h3>
-                    <p>Acceso completo a todas las funciones del servidor</p>
-                </div>
-                <div class="info-card" style="border-left-color: #f39c12;">
-                    <h3><i class="fas fa-cog"></i> Gestionar Servidor</h3>
-                    <p>Permite modificar configuración del servidor</p>
-                </div>
-                <div class="info-card" style="border-left-color: #3498db;">
-                    <h3><i class="fas fa-gavel"></i> Moderar</h3>
-                    <p>Posibilidad de sancionar miembros del servidor</p>
-                </div>
-                <div class="info-card" style="border-left-color: #2ecc71;">
-                    <h3><i class="fas fa-comments"></i> Mensajes</h3>
-                    <p>Enviar, editar y eliminar mensajes</p>
-                </div>
             </div>
         </div>
     </div>
@@ -285,11 +268,28 @@
     <script>
         let selectedGuildId = '<%= selectedGuild.id %>';
 
-        // Inicializar sistema de filtrado
-        setupTableFiltering('searchRole', '.btn-filter-roles', '.role-row', filterRolesTable);
+        // Inicializar sistema de filtrado con las nuevas clases
+        setupTableFiltering('searchRole', '.btn-filter-large', '.role-row', filterRolesTable);
         
         // Inicializar modales
         setupModalOverlays();
+
+        // Event listeners para botones de editar
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-edit-role')) {
+                const btn = e.target.closest('.btn-edit-role');
+                const roleId = btn.dataset.roleId;
+                const roleName = btn.dataset.roleName;
+                editRole(roleId, roleName);
+            }
+            
+            if (e.target.closest('.btn-delete-role')) {
+                const btn = e.target.closest('.btn-delete-role');
+                const roleId = btn.dataset.roleId;
+                const roleName = btn.dataset.roleName;
+                deleteRole(roleId, roleName);
+            }
+        });
 
         // Editar rol
         function editRole(roleId, roleName) {
