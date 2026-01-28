@@ -6,6 +6,7 @@
 
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const config = require("../../../config");
+const { prisma } = require("../../../utils/database");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -23,6 +24,29 @@ module.exports = {
 
         // Enviar Embed Rojo con link a normativa
         await sendWhitelistEmbed(channel, user, "rechazada", 0xe74c3c, config.whitelist.normativa);
+
+        // LOGGING EN BASE DE DATOS
+        try {
+            await prisma.whitelistLog.upsert({
+                where: { userId_action: { userId: user.id, action: "rechazado" } },
+                update: {
+                    moderatorId: interaction.user.id,
+                    moderatorTag: interaction.user.tag,
+                    note: "Rechazado mediante comando /rechazar"
+                },
+                create: {
+                    userId: user.id,
+                    userTag: user.tag,
+                    moderatorId: interaction.user.id,
+                    moderatorTag: interaction.user.tag,
+                    action: "rechazado",
+                    note: "Rechazado mediante comando /rechazar"
+                }
+            });
+            console.log(`✅ Log de Whitelist guardado para ${user.tag}`);
+        } catch (error) {
+            console.error("❌ Error guardando log de whitelist:", error);
+        }
 
         await interaction.reply({ content: `❌ Whitelist de **${user.tag}** rechazada.`, flags: [MessageFlags.Ephemeral] });
     },

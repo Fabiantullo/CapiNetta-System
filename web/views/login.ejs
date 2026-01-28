@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capi Netta RP - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-container h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .login-container p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .discord-logo {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 20px;
+        }
+
+        .login-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #5865F2;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .login-btn:hover {
+            background: #4752C4;
+        }
+
+        .login-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .info {
+            color: #999;
+            font-size: 12px;
+            margin-top: 30px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <svg class="discord-logo" viewBox="0 0 127.999 127.999" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64.25A105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36a77.7,77.7,0,0,0,6.89-11.1A68.42,68.42,0,0,1,28,85.3a68.68,68.68,0,0,0,5.63,4.12c14.9,10.75,28.75,13.08,42.81,10.44a70.844,70.844,0,0,0,4.82-12.34,77,77,0,0,0,6.89,11.08A106.16,106.16,0,0,0,126.75,80.21q.72-5.57-.6-11.15ZM42.45,65.69C37.57,65.69,33.64,61.6,33.64,56.66s3.55-9.15,8.81-9.15c5.02,0,9.14,3.44,8.81,9.15S47.33,65.69,42.45,65.69Zm42.24,0c-4.88,0-8.81-3.89-8.81-9.15s3.55-9.15,8.81-9.15c5.02,0,9.14,3.44,8.81,9.15S89.72,65.69,84.69,65.69Z"/>
+        </svg>
+
+        <h1>Capi Netta RP</h1>
+        <p>Panel de Administración</p>
+
+        <a href="/auth/discord" class="login-btn">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path fill="white" d="M20.317 4.371a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.211.375-.445.865-.607 1.252a18.27 18.27 0 00-5.487 0c-.165-.387-.399-.877-.61-1.252a.077.077 0 00-.079-.037 19.736 19.736 0 00-4.885 1.515.070.070 0 00-.033.028C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.056 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.612.873-1.256 1.226-1.933a.076.076 0 00-.042-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.294.075.075 0 01.078-.01c3.927 1.793 8.18 1.793 12.062 0a.075.075 0 01.079.009c.12.098.246.198.373.294a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.076.076 0 00-.041.107c.359.677.768 1.321 1.226 1.933a.077.077 0 00.084.028 19.86 19.86 0 006.002-3.03.076.076 0 00.032-.056c.5-4.506-.838-8.962-3.552-12.658a.061.061 0 00-.033-.028zM8.02 15.33c-1.183 0-2.157-.965-2.157-2.156 0-1.193.964-2.157 2.157-2.157 1.193 0 2.156.964 2.156 2.157 0 1.191-.963 2.156-2.156 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.964-2.157 2.157-2.157 1.193 0 2.156.964 2.156 2.157 0 1.191-.963 2.156-2.156 2.156z"/>
+            </svg>
+            Iniciar Sesión con Discord
+        </a>
+
+        <div class="info">
+            <p>🔐 Acceso restringido solo a Administradores</p>
+            <p>Debes tener permisos de Administrador en el servidor</p>
+        </div>
+    </div>
+</body>
+</html>

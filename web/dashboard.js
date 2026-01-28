@@ -160,8 +160,16 @@ app.get('/access-denied', (req, res) => {
 //                             RUTAS DASHBOARD
 // =============================================================================
 
-// Ruta Principal: Home con Estadísticas (PROTEGIDA)
-app.get('/', checkAuth, async (req, res) => {
+// Ruta Principal: Página de Bienvenida (SIN PROTECCIÓN)
+app.get('/', (req, res) => {
+    if (req.isAuthenticated()) {
+        return res.redirect('/dashboard');
+    }
+    res.render('login', { user: req.user });
+});
+
+// Ruta Dashboard: Home con Estadísticas (PROTEGIDA)
+app.get('/dashboard', checkAuth, async (req, res) => {
     try {
         const [usersWarned, ticketsOpen, warnsAggregate, activityLogs] = await Promise.all([
             prisma.warn.count(), // Cantidad de usuarios con warns

@@ -123,5 +123,7 @@ model WhitelistLog {
   note         String?  // Razon o nota opcional
   timestamp    DateTime @default(now())
 
+  // Evitar duplicados: un usuario solo puede tener UN registro por action
+  @@unique([userId, action])
   @@map("whitelist_logs")
 }

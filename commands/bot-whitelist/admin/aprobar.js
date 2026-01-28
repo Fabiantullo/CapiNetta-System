@@ -29,8 +29,14 @@ module.exports = {
 
         // LOGGING EN BASE DE DATOS
         try {
-            await prisma.whitelistLog.create({
-                data: {
+            await prisma.whitelistLog.upsert({
+                where: { userId_action: { userId: user.id, action: "aprobado" } },
+                update: {
+                    moderatorId: interaction.user.id,
+                    moderatorTag: interaction.user.tag,
+                    note: "Aprobado mediante comando /aprobar"
+                },
+                create: {
                     userId: user.id,
                     userTag: user.tag,
                     moderatorId: interaction.user.id,
