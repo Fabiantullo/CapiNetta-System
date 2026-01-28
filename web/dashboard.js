@@ -277,24 +277,35 @@ app.get('/dashboard', checkAuth, async (req, res) => {
                     try {
                         const staffRoleIds = JSON.parse(guildSettings.staffRoles);
                         console.log(`[DEBUG] Parsed staffRoleIds:`, staffRoleIds);
-                        console.log(`[DEBUG] Total members in cache: ${guild.members.cache.size}`);
                         
-                        const staffMembers = guild.members.cache.filter(m => {
-                            // Log de debugging por cada miembro
+                        // Obtener miembros con información de presence actualizada
+                        let members = guild.members.cache;
+                        console.log(`[DEBUG] Total members in cache: ${members.size}`);
+                        
+                        // Si hay pocos miembros en caché, intentar fetcharlos
+                        if (members.size < guild.memberCount) {
+                            try {
+                                await guild.members.fetch({ force: true });
+                                members = guild.members.cache;
+                                console.log(`[DEBUG] After fetch - Total members: ${members.size}`);
+                            } catch (e) {
+                                console.warn(`[WARN] Could not fetch members: ${e.message}`);
+                            }
+                        }
+                        
+                        const staffMembers = members.filter(m => {
                             const isBot = m.user.bot;
                             const hasPresence = !!m.presence;
-                            const isOnline = m.presence?.status !== 'offline';
+                            const isOnline = m.presence?.status && m.presence.status !== 'offline';
                             const hasStaffRole = m.roles.cache.some(role => staffRoleIds.includes(role.id));
-                            const memberRoles = m.roles.cache.map(r => r.id).join(', ');
                             
-                            if (!isBot && hasPresence) {
-                                console.log(`[DEBUG] Member: ${m.user.username} - Presence: ${m.presence.status} - Roles: [${memberRoles}] - IsStaff: ${hasStaffRole}`);
+                            // Log detallado
+                            if (!isBot) {
+                                console.log(`[DEBUG] Member: ${m.user.username} | Bot: ${isBot} | HasPresence: ${hasPresence} | Online: ${isOnline} | Roles: ${m.roles.cache.map(r => r.id).join(',')} | IsStaff: ${hasStaffRole}`);
                             }
                             
-                            if (m.user.bot) return false;
-                            if (!m.presence) return false;
-                            if (m.presence.status === 'offline') return false;
-                            return hasStaffRole;
+                            // Contar si: no es bot, tiene presence, está online, y tiene rol de staff
+                            return !isBot && hasPresence && isOnline && hasStaffRole;
                         });
                         
                         discordStats.staff = staffMembers.size;
