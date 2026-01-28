@@ -2,7 +2,7 @@
     // Sidebar toggle
     const hamburger = document.getElementById('hamburger');
     const sidebar = document.getElementById('sidebar');
-    
+
     if (hamburger && sidebar) {
         hamburger.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -12,7 +12,7 @@
     // Server dropdown toggle
     const serverDropdownBtn = document.getElementById('serverDropdown');
     const serverMenu = document.getElementById('serverMenu');
-    
+
     if (serverDropdownBtn && serverMenu) {
         serverDropdownBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -23,11 +23,6 @@
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.server-dropdown')) {
                 serverMenu.classList.remove('show');
-            }
-        });
-    }
-</script>
-                mainContent.style.width = '100%';
             }
         });
     }
