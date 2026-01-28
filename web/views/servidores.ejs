@@ -22,6 +22,7 @@
         <div class="brand">CAPI NETTA RP</div>
         <ul class="nav-links">
             <li><a href="/servidores" class="active">🌐 Todos los Servidores</a></li>
+            <li><a href="/overview">📊 Análisis General</a></li>
             <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
             <li><a href="/dashboard">📊 Dashboard</a></li>
             <li><a href="/tickets">🎫 Tickets</a></li>
@@ -126,12 +127,27 @@
     // Toggle sidebar
     const hamburger = document.getElementById('hamburger');
     const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
 
-    if (hamburger) {
-        hamburger.addEventListener('click', () => {
+    if (hamburger && sidebar) {
+        // Función para toggle del sidebar
+        hamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
             sidebar.classList.toggle('hidden');
+            
+            // En desktop, ajustar el main-content
+            if (window.innerWidth > 768) {
+                if (sidebar.classList.contains('hidden')) {
+                    mainContent.style.marginLeft = '0';
+                    mainContent.style.width = '100%';
+                } else {
+                    mainContent.style.marginLeft = '250px';
+                    mainContent.style.width = 'calc(100% - 250px)';
+                }
+            }
         });
 
+        // Cerrar sidebar al hacer click en un link (solo móvil)
         const links = sidebar.querySelectorAll('a');
         links.forEach(link => {
             link.addEventListener('click', () => {
@@ -141,11 +157,23 @@
             });
         });
 
+        // Cerrar sidebar al hacer click fuera (solo móvil)
         document.addEventListener('click', (e) => {
-            if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
-                if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
                     sidebar.classList.add('hidden');
                 }
+            }
+        });
+
+        // Ajustar al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && !sidebar.classList.contains('hidden')) {
+                mainContent.style.marginLeft = '250px';
+                mainContent.style.width = 'calc(100% - 250px)';
+            } else if (window.innerWidth <= 768) {
+                mainContent.style.marginLeft = '0';
+                mainContent.style.width = '100%';
             }
         });
     }

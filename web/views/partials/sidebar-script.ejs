@@ -1,0 +1,69 @@
+<script>
+    // Toggle sidebar mejorado
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+
+    if (hamburger && sidebar && mainContent) {
+        // Función para toggle del sidebar
+        hamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.toggle('hidden');
+            
+            // En desktop, ajustar el main-content
+            if (window.innerWidth > 768) {
+                if (sidebar.classList.contains('hidden')) {
+                    mainContent.style.marginLeft = '0';
+                    mainContent.style.width = '100%';
+                } else {
+                    mainContent.style.marginLeft = '250px';
+                    mainContent.style.width = 'calc(100% - 250px)';
+                }
+            }
+        });
+
+        // Cerrar sidebar al hacer click en un link (solo móvil)
+        const links = sidebar.querySelectorAll('a');
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            });
+        });
+
+        // Cerrar sidebar al hacer click fuera (solo móvil)
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        });
+
+        // Ajustar al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && !sidebar.classList.contains('hidden')) {
+                mainContent.style.marginLeft = '250px';
+                mainContent.style.width = 'calc(100% - 250px)';
+            } else if (window.innerWidth <= 768) {
+                mainContent.style.marginLeft = '0';
+                mainContent.style.width = '100%';
+            }
+        });
+    }
+
+    // Marcar link activo
+    const currentLocation = location.pathname;
+    const navLinks = document.querySelectorAll('.nav-links a');
+    navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && href !== 'javascript:void(0)') {
+            if (href === currentLocation) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        }
+    });
+</script>

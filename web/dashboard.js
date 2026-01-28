@@ -493,6 +493,122 @@ app.get('/servidores', checkAuth, async (req, res) => {
     }
 });
 
+// Ruta de Vista General / Análisis Global de Todos los Servidores (PROTEGIDA)
+app.get('/overview', checkAuth, async (req, res) => {
+    try {
+        const client = app.locals.discordClient;
+        const guildIds = req.adminGuilds.map(g => g.id);
+
+        // Estadísticas globales
+        const [
+            totalTicketsOpen,
+            totalWarns,
+            totalLogs,
+            allWarns
+        ] = await Promise.all([
+            prisma.ticket.count({ 
+                where: { 
+                    guildId: { in: guildIds },
+                    status: 'open' 
+                } 
+            }),
+            prisma.warn.aggregate({ 
+                where: { guildId: { in: guildIds } },
+                _sum: { count: true },
+                _count: true
+            }),
+            prisma.activityLog.count({ 
+                where: { guildId: { in: guildIds } }
+            }),
+            prisma.warn.findMany({
+                where: { guildId: { in: guildIds } },
+                select: { userId: true }
+            })
+        ]);
+
+        // Usuarios únicos con warns (sin duplicados entre servidores)
+        const uniqueUsersWarned = new Set(allWarns.map(w => w.userId)).size;
+
+        // Datos por servidor
+        const serversData = [];
+        let totalMembers = 0;
+        let totalVoice = 0;
+        let totalStaffOnline = 0;
+
+        for (const guildInfo of req.adminGuilds) {
+            const guild = client.guilds.cache.get(guildInfo.id);
+            if (!guild) continue;
+
+            totalMembers += guild.memberCount;
+
+            try {
+                totalVoice += guild.voiceStates.cache.filter(vs => vs.channelId).size;
+            } catch (e) {
+                // Ignorar errores
+            }
+
+            const staffOnline = guild.members.cache.filter(m =>
+                !m.user.bot &&
+                m.presence?.status !== 'offline' &&
+                (m.permissions.has(PermissionsBitField.Flags.ModerateMembers) || 
+                 m.permissions.has(PermissionsBitField.Flags.Administrator))
+            ).size;
+
+            totalStaffOnline += staffOnline;
+
+            const [ticketsOpen, warnsData] = await Promise.all([
+                prisma.ticket.count({ 
+                    where: { guildId: guild.id, status: 'open' } 
+                }),
+                prisma.warn.aggregate({ 
+                    where: { guildId: guild.id },
+                    _sum: { count: true }
+                })
+            ]);
+
+            serversData.push({
+                id: guild.id,
+                name: guild.name,
+                icon: guild.icon,
+                memberCount: guild.memberCount,
+                ticketsOpen,
+                warnsTotal: warnsData._sum.count || 0,
+                voiceCount: guild.voiceStates.cache.filter(vs => vs.channelId).size,
+                staffOnline
+            });
+        }
+
+        // Últimas actividades de todos los servidores
+        const recentLogs = await prisma.activityLog.findMany({
+            where: { guildId: { in: guildIds } },
+            orderBy: { timestamp: 'desc' },
+            take: 15
+        });
+
+        res.render('overview', {
+            user: req.user,
+            adminGuilds: req.adminGuilds,
+            selectedGuild: { name: 'Análisis General', icon: null },
+            globalStats: {
+                totalServers: req.adminGuilds.length,
+                totalMembers,
+                totalTicketsOpen,
+                totalWarns: totalWarns._sum.count || 0,
+                uniqueUsersWarned,
+                totalLogs,
+                totalVoice,
+                totalStaffOnline,
+                avgPing: client.ws.ping
+            },
+            serversData,
+            recentLogs
+        });
+    } catch (error) {
+        console.error('Error en overview:', error);
+        res.status(500).send("Error cargando análisis general: " + error.message);
+    }
+});
+
 // Función para iniciar el servidor
 function startDashboard(discordClient) {
     // Guardamos el cliente en locals para acceder en rutas

@@ -23,6 +23,11 @@
                 Cambiar ▼
             </button>
             <div class="dropdown-menu" id="serverMenu">
+                <a href="/overview" class="dropdown-item dropdown-overview">
+                    <div class="dropdown-icon-placeholder">📊</div>
+                    <span><strong>Análisis General</strong></span>
+                </a>
+                <div class="dropdown-divider"></div>
                 <% adminGuilds.forEach(guild => { %>
                     <a href="?server=<%= guild.id %>" class="dropdown-item <%= guild.id === selectedGuild.id ? 'active' : '' %>">
                         <% if (guild.icon) { %>
