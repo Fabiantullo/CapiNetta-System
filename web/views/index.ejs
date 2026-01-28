@@ -39,78 +39,121 @@
 
     <!-- Main Content -->
     <main class="main-content">
-        <h1>Dashboard General</h1>
+        <div class="header-section">
+            <h1>📊 Dashboard General</h1>
+            <p class="subtitle">Bienvenido, <%= user.username %>! Aquí puedes ver toda la actividad del servidor.</p>
+        </div>
 
-        <!-- Stats Grid -->
+        <!-- Stats Grid - Row 1 -->
         <div class="grid-container">
             <div class="card highlight">
-                <h3>Tickets Abiertos</h3>
+                <h3>🎫 Tickets Abiertos</h3>
                 <div class="value">
                     <%= stats.ticketsOpen %>
                 </div>
+                <p class="card-footer"><a href="/tickets?status=open">Ver detalles →</a></p>
             </div>
             <div class="card">
-                <h3>Usuarios Warned</h3>
+                <h3>⚠️ Usuarios Warned</h3>
                 <div class="value">
                     <%= stats.usersWarned %>
                 </div>
+                <p class="card-footer">De <%= stats.warnsTotal %> warns totales</p>
             </div>
             <div class="card">
-                <h3>Total Warns</h3>
+                <h3>📈 Total Warns</h3>
                 <div class="value">
                     <%= stats.warnsTotal %>
                 </div>
+                <p class="card-footer">Histórico completo</p>
             </div>
             <div class="card">
-                <h3>Miembros (Server)</h3>
+                <h3>👥 Miembros</h3>
                 <div class="value">
                     <%= stats.online %>
                 </div>
+                <p class="card-footer">Miembros totales del servidor</p>
             </div>
+        </div>
+
+        <!-- Stats Grid - Row 2 -->
+        <div class="grid-container">
             <div class="card">
-                <h3>En Voz</h3>
+                <h3>🎤 En Voz</h3>
                 <div class="value">
                     <%= stats.voice %>
                 </div>
+                <p class="card-footer">Usuarios conectados ahora</p>
             </div>
             <div class="card">
-                <h3>Staff Activo</h3>
+                <h3>👮 Staff Activo</h3>
                 <div class="value">
                     <%= stats.staff %>
                 </div>
+                <p class="card-footer">Con presencia online</p>
+            </div>
+            <div class="card">
+                <h3>📡 Ping Bot</h3>
+                <div class="value">
+                    <%= stats.ping %>ms
+                </div>
+                <p class="card-footer">Latencia del bot</p>
+            </div>
+            <div class="card">
+                <h3>⚙️ Estado</h3>
+                <div class="value">
+                    <span style="color: #2ecc71;">✓ ONLINE</span>
+                </div>
+                <p class="card-footer">Sistema operativo</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="actions-section">
+            <h2>⚡ Acciones Rápidas</h2>
+            <div class="button-group">
+                <a href="/tickets" class="btn btn-primary">🎫 Gestionar Tickets</a>
+                <a href="/logs" class="btn btn-secondary">📜 Ver Todos los Logs</a>
+                <a href="/logout" class="btn btn-danger">🚪 Cerrar Sesión</a>
             </div>
         </div>
 
         <!-- Recent Logs Section -->
-        <h2>📜 Última Actividad (Logs)</h2>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Fecha</th>
-                        <th>Usuario</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% logs.forEach(log=> { %>
+        <div class="logs-section">
+            <h2>📝 Últimas Actividades</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
                         <tr>
-                            <td>#<%= log.id %>
-                            </td>
-                            <td>
-                                <%= new Date(log.timestamp).toLocaleString() %>
-                            </td>
-                            <td>
-                                <%= log.userId %>
-                            </td>
-                            <td>
-                                <%= log.action %>
-                            </td>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Acción</th>
                         </tr>
-                        <% }); %>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <% logs.forEach(log=> { %>
+                            <tr>
+                                <td><strong>#<%= log.id %></strong></td>
+                                <td><%= new Date(log.timestamp).toLocaleString('es-AR') %></td>
+                                <td><code><%= log.userId %></code></td>
+                                <td><%= log.action %></td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+                <div class="table-footer">
+                    <a href="/logs">Ver historial completo →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="info-card">
+            <h3>ℹ️ Información del Sistema</h3>
+            <p>🤖 Bot: <strong>Capi Netta RP</strong></p>
+            <p>🎮 Servidor: <strong>General</strong></p>
+            <p>📅 Última actualización: <strong><%= new Date().toLocaleString('es-AR') %></strong></p>
         </div>
 
     </main>

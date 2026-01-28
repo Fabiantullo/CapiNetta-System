@@ -180,15 +180,20 @@ app.get('/dashboard', checkAuth, async (req, res) => {
             const guild = client.guilds.cache.get(config.general.guildId);
 
             if (guild) {
-                const presences = guild.presences?.cache || guild.members.cache;
                 discordStats.online = guild.memberCount;
-                discordStats.voice = guild.members.cache.filter(m => m.voice.channel).size;
                 discordStats.ping = client.ws.ping;
+                
+                // Contar usuarios en voz (más confiable usando voiceStates)
+                try {
+                    discordStats.voice = guild.voiceStates.cache.filter(vs => vs.channelId).size;
+                } catch (e) {
+                    discordStats.voice = 0;
+                }
 
-                // Staff Online logic (con presencia cuando está disponible)
+                // Staff Online logic
                 discordStats.staff = guild.members.cache.filter(m =>
                     !m.user.bot &&
-                    (presences.get(m.id)?.status || m.presence?.status) !== 'offline' &&
+                    m.presence?.status !== 'offline' &&
                     (m.permissions.has(PermissionsBitField.Flags.ModerateMembers) || m.permissions.has(PermissionsBitField.Flags.Administrator))
                 ).size;
             }
