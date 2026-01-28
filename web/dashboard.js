@@ -115,17 +115,67 @@ async function checkAuth(req, res, next) {
     }
 
     try {
-        const guild = await discordClient.guilds.fetch(config.general.guildId);
+        // Obtener todos los servidores donde el usuario es admin
+        const userGuilds = req.user.guilds || [];
+        const adminGuilds = [];
+
+        for (const guild of userGuilds) {
+            // Verificar que el bot esté en ese servidor
+            const botGuild = discordClient.guilds.cache.get(guild.id);
+            if (!botGuild) continue;
+
+            try {
+                const member = await botGuild.members.fetch(req.user.id);
+                if (member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                    adminGuilds.push({
+                        id: guild.id,
+                        name: guild.name,
+                        icon: guild.icon
+                    });
+                }
+            } catch (err) {
+                continue;
+            }
+        }
+
+        if (adminGuilds.length === 0) {
+            return res.redirect('/access-denied');
+        }
+
+        // Guardar lista de servidores con acceso
+        req.adminGuilds = adminGuilds;
+
+        // Obtener servidor seleccionado de la sesión o query
+        let selectedGuildId = req.query.server || req.session.selectedGuildId;
+
+        // Si no hay servidor seleccionado o no tiene acceso, usar el primero
+        if (!selectedGuildId || !adminGuilds.find(g => g.id === selectedGuildId)) {
+            selectedGuildId = adminGuilds[0].id;
+        }
+
+        // Guardar en sesión
+        req.session.selectedGuildId = selectedGuildId;
+
+        // Verificar permisos en el servidor seleccionado
+        const guild = await discordClient.guilds.fetch(selectedGuildId);
         const member = await guild.members.fetch(req.user.id);
 
         if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return res.redirect('/access-denied');
         }
 
-        // Adjuntar miembro para uso en vistas si hace falta
+        // Adjuntar información para las vistas
         req.discordMember = member;
+        req.selectedGuild = {
+            id: guild.id,
+            name: guild.name,
+            icon: guild.icon,
+            memberCount: guild.memberCount
+        };
+
         return next();
     } catch (err) {
+        console.error('Error en checkAuth:', err);
         return res.status(403).send('No se pudo validar permisos en el servidor.');
     }
 }
@@ -179,16 +229,22 @@ app.get('/', (req, res) => {
 // Ruta Dashboard: Home con Estadísticas (PROTEGIDA)
 app.get('/dashboard', checkAuth, async (req, res) => {
     try {
+        const guildId = req.selectedGuild.id;
+
         const [usersWarned, ticketsOpen, warnsAggregate, activityLogs] = await Promise.all([
-            prisma.warn.count(), // Cantidad de usuarios con warns
-            prisma.ticket.count({ where: { status: 'open' } }),
-            prisma.warn.aggregate({ _sum: { count: true } }), // Suma total de warns
-            prisma.activityLog.findMany({ orderBy: { timestamp: 'desc' }, take: 10 }) // Últimos 10 logs
+            prisma.warn.count({ where: { guildId } }),
+            prisma.ticket.count({ where: { guildId, status: 'open' } }),
+            prisma.warn.aggregate({ where: { guildId }, _sum: { count: true } }),
+            prisma.activityLog.findMany({ 
+                where: { guildId },
+                orderBy: { timestamp: 'desc' }, 
+                take: 10 
+            })
         ]);
 
         const warnsTotal = warnsAggregate._sum.count || 0;
 
-        // Datos de Discord (Si el cliente está disponible)
+        // Datos de Discord
         let discordStats = {
             online: 0,
             voice: 0,
@@ -198,20 +254,18 @@ app.get('/dashboard', checkAuth, async (req, res) => {
 
         if (app.locals.discordClient) {
             const client = app.locals.discordClient;
-            const guild = client.guilds.cache.get(config.general.guildId);
+            const guild = client.guilds.cache.get(guildId);
 
             if (guild) {
                 discordStats.online = guild.memberCount;
                 discordStats.ping = client.ws.ping;
                 
-                // Contar usuarios en voz (más confiable usando voiceStates)
                 try {
                     discordStats.voice = guild.voiceStates.cache.filter(vs => vs.channelId).size;
                 } catch (e) {
                     discordStats.voice = 0;
                 }
 
-                // Staff Online logic
                 discordStats.staff = guild.members.cache.filter(m =>
                     !m.user.bot &&
                     m.presence?.status !== 'offline' &&
@@ -222,6 +276,8 @@ app.get('/dashboard', checkAuth, async (req, res) => {
 
         res.render('index', {
             user: req.user,
+            selectedGuild: req.selectedGuild,
+            adminGuilds: req.adminGuilds,
             stats: {
                 usersWarned,
                 ticketsOpen,
@@ -238,8 +294,9 @@ app.get('/dashboard', checkAuth, async (req, res) => {
 // Ruta para ver Tickets (PROTEGIDA)
 app.get('/tickets', checkAuth, async (req, res) => {
     const { status, type, claimed } = req.query;
+    const guildId = req.selectedGuild.id;
 
-    const where = {};
+    const where = { guildId };
     if (status && ['open', 'claimed', 'closed', 'archived'].includes(status)) where.status = status;
     if (type) where.type = type;
     if (claimed === 'true') where.claimedBy = { not: null };
@@ -254,31 +311,47 @@ app.get('/tickets', checkAuth, async (req, res) => {
     // Distinct types for filter UI
     const types = await prisma.ticket.groupBy({
         by: ['type'],
+        where: { guildId },
         _count: { type: true }
     });
 
-    res.render('tickets', { tickets, user: req.user, filters: { status, type, claimed }, types });
+    res.render('tickets', { 
+        tickets, 
+        user: req.user, 
+        selectedGuild: req.selectedGuild,
+        adminGuilds: req.adminGuilds,
+        filters: { status, type, claimed }, 
+        types 
+    });
 });
 
 // Ruta para ver Logs Completos (PROTEGIDA)
 app.get('/logs', checkAuth, async (req, res) => {
+    const guildId = req.selectedGuild.id;
     const logs = await prisma.activityLog.findMany({
+        where: { guildId },
         orderBy: { timestamp: 'desc' },
         take: 100
     });
-    res.render('logs', { logs, user: req.user });
+    res.render('logs', { 
+        logs, 
+        user: req.user,
+        selectedGuild: req.selectedGuild,
+        adminGuilds: req.adminGuilds
+    });
 });
 
 // Ruta de Configuración del Servidor (PROTEGIDA)
 app.get('/configuracion', checkAuth, async (req, res) => {
     try {
+        const guildId = req.selectedGuild.id;
         const guildSettings = await prisma.guildSettings.findUnique({
-            where: { guildId: config.general.guildId }
+            where: { guildId }
         });
 
         // Si no existe configuración, crear una vacía
         const settings = guildSettings || {
-            guildId: config.general.guildId,
+            guildId,
             logsChannel: null,
             debugChannel: null,
             verifyChannel: null,
@@ -294,7 +367,7 @@ app.get('/configuracion', checkAuth, async (req, res) => {
         };
 
         // Obtener canales y roles del servidor para los selectores
-        const guild = app.locals.discordClient.guilds.cache.get(config.general.guildId);
+        const guild = app.locals.discordClient.guilds.cache.get(guildId);
         const channels = guild ? guild.channels.cache
             .filter(c => c.type === 0) // Solo canales de texto
             .map(c => ({ id: c.id, name: c.name }))
@@ -307,6 +380,8 @@ app.get('/configuracion', checkAuth, async (req, res) => {
 
         res.render('configuracion', { 
             user: req.user, 
+            selectedGuild: req.selectedGuild,
+            adminGuilds: req.adminGuilds,
             settings,
             channels,
             roles,
@@ -324,6 +399,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.post('/configuracion/save', checkAuth, async (req, res) => {
     try {
+        const guildId = req.selectedGuild.id;
         const {
             logsChannel,
             debugChannel,
@@ -337,7 +413,7 @@ app.post('/configuracion/save', checkAuth, async (req, res) => {
         } = req.body;
 
         await prisma.guildSettings.upsert({
-            where: { guildId: config.general.guildId },
+            where: { guildId },
             update: {
                 logsChannel: logsChannel || null,
                 debugChannel: debugChannel || null,
@@ -351,7 +427,7 @@ app.post('/configuracion/save', checkAuth, async (req, res) => {
                 isSetup: true
             },
             create: {
-                guildId: config.general.guildId,
+                guildId,
                 logsChannel: logsChannel || null,
                 debugChannel: debugChannel || null,
                 verifyChannel: verifyChannel || null,
@@ -368,6 +444,52 @@ app.post('/configuracion/save', checkAuth, async (req, res) => {
         res.redirect('/configuracion?success=1');
     } catch (error) {
         res.redirect('/configuracion?error=' + encodeURIComponent(error.message));
+    }
+});
+
+// Ruta de Vista General de Todos los Servidores (PROTEGIDA)
+app.get('/servidores', checkAuth, async (req, res) => {
+    try {
+        const client = app.locals.discordClient;
+        const serversData = [];
+
+        for (const guildInfo of req.adminGuilds) {
+            const guild = client.guilds.cache.get(guildInfo.id);
+            if (!guild) continue;
+
+            // Obtener estadísticas del servidor
+            const [ticketsOpen, warnsTotal, logsCount] = await Promise.all([
+                prisma.ticket.count({ where: { guildId: guild.id, status: 'open' } }),
+                prisma.warn.aggregate({ where: { guildId: guild.id }, _sum: { count: true } }),
+                prisma.activityLog.count({ where: { guildId: guild.id } })
+            ]);
+
+            const settings = await prisma.guildSettings.findUnique({
+                where: { guildId: guild.id }
+            });
+
+            serversData.push({
+                id: guild.id,
+                name: guild.name,
+                icon: guild.icon,
+                memberCount: guild.memberCount,
+                isSetup: settings?.isSetup || false,
+                stats: {
+                    ticketsOpen,
+                    warnsTotal: warnsTotal._sum.count || 0,
+                    logsCount
+                }
+            });
+        }
+
+        res.render('servidores', {
+            user: req.user,
+            adminGuilds: req.adminGuilds,
+            selectedGuild: req.selectedGuild,
+            serversData
+        });
+    } catch (error) {
+        res.status(500).send("Error cargando servidores: " + error.message);
     }
 });
 

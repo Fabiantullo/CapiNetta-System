@@ -1,0 +1,65 @@
+<!-- Server Selector Header -->
+<div class="server-selector-header">
+    <div class="current-server">
+        <% if (selectedGuild.icon) { %>
+            <img src="https://cdn.discordapp.com/icons/<%= selectedGuild.id %>/<%= selectedGuild.icon %>.png" 
+                 class="current-server-icon" alt="<%= selectedGuild.name %>">
+        <% } else { %>
+            <div class="current-server-icon-placeholder">
+                <%= selectedGuild.name.charAt(0).toUpperCase() %>
+            </div>
+        <% } %>
+        <div class="current-server-info">
+            <span class="current-server-label">Servidor Actual</span>
+            <span class="current-server-name"><%= selectedGuild.name %></span>
+        </div>
+    </div>
+    <div class="server-actions-header">
+        <a href="/servidores" class="btn-view-all" title="Ver todos los servidores">
+            🌐 Todos
+        </a>
+        <div class="server-dropdown">
+            <button class="dropdown-toggle" id="serverDropdown">
+                Cambiar ▼
+            </button>
+            <div class="dropdown-menu" id="serverMenu">
+                <% adminGuilds.forEach(guild => { %>
+                    <a href="?server=<%= guild.id %>" class="dropdown-item <%= guild.id === selectedGuild.id ? 'active' : '' %>">
+                        <% if (guild.icon) { %>
+                            <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" 
+                                 class="dropdown-icon" alt="<%= guild.name %>">
+                        <% } else { %>
+                            <div class="dropdown-icon-placeholder">
+                                <%= guild.name.charAt(0).toUpperCase() %>
+                            </div>
+                        <% } %>
+                        <span><%= guild.name %></span>
+                        <% if (guild.id === selectedGuild.id) { %>
+                            <span class="check-icon">✓</span>
+                        <% } %>
+                    </a>
+                <% }); %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Dropdown del selector de servidores
+    const dropdownToggle = document.getElementById('serverDropdown');
+    const dropdownMenu = document.getElementById('serverMenu');
+
+    if (dropdownToggle && dropdownMenu) {
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('show');
+        });
+
+        // Cerrar al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+            }
+        });
+    }
+</script>

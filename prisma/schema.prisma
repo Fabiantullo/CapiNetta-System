@@ -52,11 +52,12 @@ model WarnLog {
 // Logs de Actividad (Para stats.js y logger.js)
 model ActivityLog {
   id        Int      @id @default(autoincrement())
-  guildId   String?
+  guildId   String
   userId    String?
   action    String?  @db.Text
   timestamp DateTime @default(now())
 
+  @@index([guildId])
   @@map("activity_logs")
 }
 

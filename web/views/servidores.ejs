@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Capi Netta | Mis Servidores</title>
+    <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Hamburger Menu Button -->
+    <button class="hamburger" id="hamburger" title="Menú">☰</button>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="brand">CAPI NETTA RP</div>
+        <ul class="nav-links">
+            <li><a href="/servidores" class="active">🌐 Todos los Servidores</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="/dashboard">📊 Dashboard</a></li>
+            <li><a href="/tickets">🎫 Tickets</a></li>
+            <li><a href="/logs">📜 Logs Totales</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="/configuracion">⚙️ Configuración</a></li>
+            <li><a href="/sistema-warns">⚠️ Sistema de Warns</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">👑 Gestión de Roles</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">📢 Canales</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">📈 Estadísticas</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">ℹ️ Acerca de</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Sección en desarrollo')">❓ Ayuda</a></li>
+        </ul>
+
+        <div class="user-info">
+            <% if (user.avatar) { %>
+                <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="user-avatar"
+                    alt="Avatar">
+            <% } else { %>
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" class="user-avatar" alt="Avatar">
+            <% } %>
+            <div class="user-details">
+                <div class="username"><%= user.username %></div>
+                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="header-section">
+            <h1>🌐 Mis Servidores</h1>
+            <p class="subtitle">Vista general de todos los servidores donde tienes permisos de administrador</p>
+        </div>
+
+        <div class="servers-grid">
+            <% serversData.forEach(server => { %>
+                <div class="server-card">
+                    <div class="server-header">
+                        <% if (server.icon) { %>
+                            <img src="https://cdn.discordapp.com/icons/<%= server.id %>/<%= server.icon %>.png" 
+                                 class="server-icon" alt="<%= server.name %>">
+                        <% } else { %>
+                            <div class="server-icon-placeholder">
+                                <%= server.name.charAt(0).toUpperCase() %>
+                            </div>
+                        <% } %>
+                        <div class="server-info">
+                            <h3><%= server.name %></h3>
+                            <p class="server-members">👥 <%= server.memberCount %> miembros</p>
+                        </div>
+                        <% if (server.id === selectedGuild.id) { %>
+                            <span class="badge-selected">✓ Activo</span>
+                        <% } %>
+                    </div>
+
+                    <div class="server-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">🎫 Tickets</span>
+                            <span class="stat-value"><%= server.stats.ticketsOpen %></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">⚠️ Warns</span>
+                            <span class="stat-value"><%= server.stats.warnsTotal %></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">📜 Logs</span>
+                            <span class="stat-value"><%= server.stats.logsCount %></span>
+                        </div>
+                    </div>
+
+                    <div class="server-status">
+                        <% if (server.isSetup) { %>
+                            <span class="status-badge status-ok">✅ Configurado</span>
+                        <% } else { %>
+                            <span class="status-badge status-warn">⚠️ Sin Configurar</span>
+                        <% } %>
+                    </div>
+
+                    <div class="server-actions">
+                        <a href="/dashboard?server=<%= server.id %>" class="btn btn-primary">
+                            Administrar →
+                        </a>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+
+        <% if (serversData.length === 0) { %>
+            <div class="empty-state">
+                <h2>😔 No hay servidores disponibles</h2>
+                <p>No tienes permisos de administrador en ningún servidor donde esté el bot.</p>
+            </div>
+        <% } %>
+
+    </main>
+
+</body>
+
+<script>
+    // Toggle sidebar
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+        });
+
+        const links = sidebar.querySelectorAll('a');
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        });
+    }
+</script>
+
+</html>

@@ -21,6 +21,8 @@
     <nav class="sidebar" id="sidebar">
         <div class="brand">CAPI NETTA RP</div>
         <ul class="nav-links">
+            <li><a href="/servidores">🌐 Todos los Servidores</a></li>
+            <li><hr style="border: 1px solid var(--border-color); margin: 15px 0;"></li>
             <li><a href="/dashboard">📊 Dashboard</a></li>
             <li><a href="/tickets" class="active">🎫 Tickets</a></li>
             <li><a href="/logs">📜 Logs Totales</a></li>
@@ -53,6 +55,8 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <%- include('partials/server-selector') %>
+
         <h1>🎫 Gestión de Tickets</h1>
 
         <form method="get" class="filter-bar">
