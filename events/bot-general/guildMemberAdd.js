@@ -93,5 +93,20 @@ module.exports = {
         } catch (err) {
             console.error("Error en bienvenida:", err);
         }
+
+        // 4. ASIGNAR ROL DE "SIN VERIFICAR" SI EXISTE
+        try {
+            if (settings.roleNoVerify) {
+                const unverifiedRole = member.guild.roles.cache.get(settings.roleNoVerify);
+                if (unverifiedRole) {
+                    await member.roles.add(unverifiedRole);
+                    console.log(`✅ Rol "Sin Verificar" asignado a ${member.user.tag}`);
+                } else {
+                    console.warn(`⚠️ Rol Sin Verificar no encontrado en caché para ${member.guild.name}`);
+                }
+            }
+        } catch (error) {
+            console.error(`❌ Error asignando rol Sin Verificar a ${member.user.tag}:`, error);
+        }
     },
 };
